@@ -5,7 +5,7 @@
 {% block content %}
 <div class="dashboard-grid">
     <div class="stat-card">
-        <div class="stat-icon" style="background-color: rgba(79, 70, 229, 0.1); color: #4F46E5;">
+        <div class="stat-icon" style="background-color: #C1CEFE; color: #4F46E5;">
             <i class="fa-solid fa-users"></i>
         </div>
         <div class="stat-details">
@@ -13,7 +13,7 @@
             <p>{{ total_students }}</p>
         </div>
     </div>
-    
+
     <div class="stat-card">
         <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: #10B981;">
             <i class="fa-solid fa-book"></i>
@@ -36,12 +36,14 @@
 </div>
 
 <div class="card" style="margin-bottom: 24px;">
-    <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-chart-line" style="color: var(--primary-color);"></i> Academic Performance Analytics</h3>
+    <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-chart-line" style="color: var(--primary-color);"></i>
+        Academic Performance Analytics</h3>
     <canvas id="performanceChart" height="80"></canvas>
 </div>
 
 <div class="card">
-    <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-clock-rotate-left" style="color: var(--secondary-color);"></i> Recent Attendance Logs</h3>
+    <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-clock-rotate-left"
+            style="color: var(--secondary-color);"></i> Recent Attendance Logs</h3>
     <table class="styled-table">
         <thead>
             <tr>
@@ -59,14 +61,21 @@
                 <td>{{ log.subject.name }}</td>
                 <td>
                     {% if log.status == 'Present' %}
-                    <span style="color: #10B981; font-weight: 600; padding: 4px 8px; background: #d1fae5; border-radius: 4px; font-size: 0.85rem;"><i class="fa-solid fa-check"></i> Present</span>
+                    <span
+                        style="color: #10B981; font-weight: 600; padding: 4px 8px; background: #d1fae5; border-radius: 4px; font-size: 0.85rem;"><i
+                            class="fa-solid fa-check"></i> Present</span>
                     {% else %}
-                    <span style="color: #ef4444; font-weight: 600; padding: 4px 8px; background: #fee2e2; border-radius: 4px; font-size: 0.85rem;"><i class="fa-solid fa-xmark"></i> Absent</span>
+                    <span
+                        style="color: #ef4444; font-weight: 600; padding: 4px 8px; background: #fee2e2; border-radius: 4px; font-size: 0.85rem;"><i
+                            class="fa-solid fa-xmark"></i> Absent</span>
                     {% endif %}
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="4" style="text-align:center; color: var(--text-muted);">No recent attendance records found. Start marking attendance!</td></tr>
+            <tr>
+                <td colspan="4" style="text-align:center; color: var(--text-muted);">No recent attendance records found.
+                    Start marking attendance!</td>
+            </tr>
             {% endfor %}
         </tbody>
     </table>
@@ -83,13 +92,13 @@
             datasets: [{
                 label: 'Average Class Score (%)',
                 data: [72, 76, 82, 80, 88],
-                borderColor: '#4F46E5',
-                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                borderColor: '#675998',
+                backgroundColor: '#67599833',
                 borderWidth: 3,
                 fill: true,
                 tension: 0.4,
-                pointBackgroundColor: '#ffffff',
-                pointBorderColor: '#4F46E5',
+                pointBackgroundColor: '#DFD8C9',
+                pointBorderColor: '#675998',
                 pointBorderWidth: 2,
                 pointRadius: 4,
             }]

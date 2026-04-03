@@ -1,6 +1,8 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
-from models import db, Student, Subject, Attendance, Grade, Timetable
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+from models import db, User, Student, Subject, Attendance, Grade, Timetable
 from datetime import datetime
 
 app = Flask(__name__)
@@ -10,7 +12,22 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
 def create_dummy_data():
+    if User.query.first() is None:
+        admin = User(name="Admin", email="admin@edudesk.com", password_hash=generate_password_hash("admin123"), role="Admin")
+        db.session.add(admin)
+        teacher = User(name="Teacher", email="teacher@edudesk.com", password_hash=generate_password_hash("teacher123"), role="Teacher")
+        db.session.add(teacher)
+        db.session.commit()
+
     if Student.query.first() is None:
         s1 = Student(roll_number="CS101", name="Alice Smith", email="alice@example.com", phone="1234567890", department="Computer Science", semester=3)
         s2 = Student(roll_number="CS102", name="Bob Johnson", email="bob@example.com", phone="0987654321", department="Computer Science", semester=3)
@@ -39,12 +56,52 @@ with app.app_context():
     db.create_all()
     create_dummy_data()
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        user = User.query.filter_by(email=email).first()
+        if user and check_password_hash(user.password_hash, password):
+            login_user(user)
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Login Unsuccessful. Please check email and password', 'error')
+    return render_template('login.html')
+
+@app.route('/signup', methods=['POST'])
+def signup():
+    name = request.form.get('name')
+    email = request.form.get('email')
+    password = request.form.get('password')
+    
+    # Check if a user with that email already exists
+    if User.query.filter_by(email=email).first():
+        flash('Email already exists. Please log in.', 'error')
+        return redirect(url_for('login'))
+        
+    # By default, external signups become Teachers
+    new_user = User(name=name, email=email, password_hash=generate_password_hash(password), role='Teacher')
+    db.session.add(new_user)
+    db.session.commit()
+    flash('Account created successfully! You can now login.', 'success')
+    return redirect(url_for('login'))
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
 @app.route('/')
+@login_required
 def dashboard():
     total_students = Student.query.count()
     total_subjects = Subject.query.count()
     
-    # Calculate overall attendance percentage (dummy logic for display)
     total_attendance_records = Attendance.query.count()
     present_records = Attendance.query.filter_by(status='Present').count()
     attendance_percentage = int((present_records / total_attendance_records * 100)) if total_attendance_records > 0 else 0
@@ -58,6 +115,7 @@ def dashboard():
                            recent_attendance=recent_attendance)
 
 @app.route('/attendance', methods=['GET', 'POST'])
+@login_required
 def attendance():
     subjects = Subject.query.all()
     students = Student.query.all()
@@ -87,6 +145,7 @@ def attendance():
     return render_template('attendance.html', subjects=subjects, students=students, today=datetime.utcnow().date())
 
 @app.route('/grades', methods=['GET', 'POST'])
+@login_required
 def grades():
     subjects = Subject.query.all()
     students = Student.query.all()
@@ -108,14 +167,68 @@ def grades():
     return render_template('grades.html', subjects=subjects, students=students, grades=all_grades)
 
 @app.route('/students')
+@login_required
 def students():
     all_students = Student.query.all()
     return render_template('students.html', students=all_students)
 
+@app.route('/add_student', methods=['POST'])
+@login_required
+def add_student():
+    name = request.form.get('name')
+    roll_number = request.form.get('roll_number')
+    email = request.form.get('email')
+    phone = request.form.get('phone')
+    department = request.form.get('department')
+    semester = request.form.get('semester')
+    
+    existing = Student.query.filter_by(roll_number=roll_number).first()
+    if existing:
+        flash('Student with this roll number already exists.', 'error')
+    else:
+        new_student = Student(roll_number=roll_number, name=name, email=email, phone=phone, department=department, semester=semester)
+        db.session.add(new_student)
+        db.session.commit()
+        flash('Student added successfully!', 'success')
+        
+    return redirect(url_for('students'))
+
 @app.route('/timetable')
+@login_required
 def timetable():
     schedule = Timetable.query.join(Subject).order_by(Timetable.day, Timetable.start_time).all()
     return render_template('timetable.html', schedule=schedule)
+
+@app.route('/teachers')
+@login_required
+def teachers():
+    if current_user.role != 'Admin':
+        flash('Access Denied: Only Admins can view teachers.', 'error')
+        return redirect(url_for('dashboard'))
+    all_teachers = User.query.filter_by(role='Teacher').all()
+    return render_template('teachers.html', teachers=all_teachers)
+
+@app.route('/add_teacher', methods=['POST'])
+@login_required
+def add_teacher():
+    if current_user.role != 'Admin':
+        flash('Access Denied', 'error')
+        return redirect(url_for('dashboard'))
+        
+    name = request.form.get('name')
+    email = request.form.get('email')
+    password = request.form.get('password')
+    
+    existing = User.query.filter_by(email=email).first()
+    if existing:
+        flash('User with this email already exists.', 'error')
+    else:
+        new_teacher = User(name=name, email=email, password_hash=generate_password_hash(password), role='Teacher')
+        db.session.add(new_teacher)
+        db.session.commit()
+        flash('Teacher added successfully!', 'success')
+        
+    return redirect(url_for('teachers'))
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -14,6 +14,13 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <!-- Chart.js for analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Dark Mode Init script (avoids flash of wrong color) -->
+    <script>
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark-mode');
+        }
+    </script>
 </head>
 <body>
 
@@ -54,6 +61,14 @@
                     <span>Timetable</span>
                 </a>
             </li>
+            {% if current_user.role == 'Admin' %}
+            <li class="nav-item">
+                <a href="{{ url_for('teachers') }}" class="nav-link {% if request.endpoint == 'teachers' %}active{% endif %}">
+                    <i class="fa-solid fa-chalkboard-user"></i>
+                    <span>Teachers</span>
+                </a>
+            </li>
+            {% endif %}
         </ul>
     </aside>
 
@@ -62,9 +77,13 @@
         <!-- Top Bar -->
         <header class="topbar">
             <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
-            <div class="user-profile">
-                <span>Jane Doe (Admin)</span>
-                <div class="avatar">JD</div>
+            <div class="user-profile" style="display: flex; align-items: center; gap: 12px;">
+                <button id="themeToggle" class="btn btn-theme-toggle" aria-label="Toggle Theme" style="background: transparent; border: none; color: var(--text-main); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; padding: 4px 8px;">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <span>{{ current_user.name }} ({{ current_user.role }})</span>
+                <div class="avatar">{{ current_user.name[0] | upper if current_user.name else 'U' }}</div>
+                <a href="{{ url_for('logout') }}" title="Logout" style="color: #ef4444; font-size: 1.2rem; margin-left: 8px;"><i class="fa-solid fa-right-from-bracket"></i></a>
             </div>
         </header>
 
@@ -91,5 +110,30 @@
     </main>
 
     {% block scripts %}{% endblock %}
+    <script>
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark-mode');
+            const isDark = document.documentElement.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            
+            const icon = document.querySelector('#themeToggle i');
+            if (isDark) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+            }
+        });
+
+        // Init toggle icon on load
+        window.addEventListener('DOMContentLoaded', () => {
+            if (document.documentElement.classList.contains('dark-mode')) {
+                const icon = document.querySelector('#themeToggle i');
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            }
+        });
+    </script>
 </body>
 </html>

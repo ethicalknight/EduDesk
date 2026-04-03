@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Teachers{% endblock %}
+{% block page_title %}Teachers Directory{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h3><i class="fa-solid fa-chalkboard-user" style="color: var(--primary-color);"></i> Enrolled Teachers</h3>
+        <button class="btn btn-primary" onclick="document.getElementById('addTeacherForm').style.display='block'"><i class="fa-solid fa-user-plus" style="margin-right: 8px;"></i> Add Teacher</button>
+    </div>
+    
+    <div id="addTeacherForm" class="card" style="display: none; margin-bottom: 24px; border-left: 4px solid var(--secondary-color);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h4 style="margin: 0;">Add New Teacher</h4>
+            <button onclick="document.getElementById('addTeacherForm').style.display='none'" style="background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--text-muted);"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <form action="{{ url_for('add_teacher') }}" method="POST" style="margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <div class="form-group">
+                <input type="text" name="name" class="form-control" placeholder="Full Name" required>
+            </div>
+            <div class="form-group">
+                <input type="email" name="email" class="form-control" placeholder="Email Address" required>
+            </div>
+            <div class="form-group">
+                <input type="password" name="password" class="form-control" placeholder="Temporary Password" required>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1; display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, var(--secondary-color) 0%, #059669 100%);"><i class="fa-solid fa-save"></i> Save Teacher</button>
+            </div>
+        </form>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;">
+        {% for teacher in teachers %}
+        <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; transition: var(--transition); background: white;" onmouseover="this.style.boxShadow='var(--shadow-md)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.boxShadow='none'; this.style.transform='none';">
+            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, var(--secondary-color) 0%, #059669 100%); color: white; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; font-weight: bold;">
+                    {{ teacher.name[0] | upper }}
+                </div>
+                <div>
+                    <h4 style="margin: 0; font-size: 1.1rem; color: var(--text-main);">{{ teacher.name }}</h4>
+                    <span class="grade-badge grade-high" style="margin-top: 4px;">{{ teacher.role }}</span>
+                </div>
+            </div>
+            
+            <div style="font-size: 0.9rem; color: var(--text-muted); display: grid; gap: 8px;">
+                <div><i class="fa-solid fa-envelope" style="width: 20px; text-align: center;"></i> {{ teacher.email }}</div>
+            </div>
+        </div>
+        {% else %}
+        <p style="color: var(--text-muted); grid-column: 1 / -1; text-align: center;">No teachers found in the database.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

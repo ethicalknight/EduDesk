@@ -39,8 +39,9 @@
             <input type="number" step="0.1" name="max_score" id="max_score" class="form-control" value="100" required>
         </div>
         <div class="form-group" style="display: flex; align-items: flex-end;">
-            <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px;"><i class="fa-solid fa-save"
-                    style="margin-right: 8px;"></i> Save Grade</button>
+            <button type="submit" class="btn btn-primary btn-save" style="width: 100%; height: 42px;">
+                <i class="fa-solid fa-save" style="margin-right: 8px;"></i> Save Grade
+            </button>
         </div>
     </form>
 </div>
@@ -67,7 +68,8 @@
                 <td><strong>{{ grade.score }}</strong> / {{ grade.max_score }}</td>
                 <td>
                     {% set percentage = (grade.score / grade.max_score) * 100 %}
-                    <span class="grade-badge {% if percentage >= 80 %}grade-high{% elif percentage >= 60 %}grade-medium{% else %}grade-low{% endif %}">
+                    <span
+                        class="grade-badge {% if percentage >= 80 %}grade-high{% elif percentage >= 60 %}grade-medium{% else %}grade-low{% endif %}">
                         {{ "%.1f"|format(percentage) }}%
                     </span>
                 </td>

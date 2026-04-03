@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EduDesk Login</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', sans-serif;
+  }
+
+  body {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #DFD8C9, #9CB9DF);
+    overflow: hidden;
+  }
+
+  /* Animated Background */
+  body::before {
+    content: "";
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    background: #675998;
+    border-radius: 50%;
+    filter: blur(120px);
+    top: -100px;
+    left: -100px;
+    animation: move 10s infinite alternate;
+  }
+
+  body::after {
+    content: "";
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    background: #AAABBC;
+    border-radius: 50%;
+    filter: blur(120px);
+    bottom: -100px;
+    right: -100px;
+    animation: move 12s infinite alternate;
+  }
+
+  @keyframes move {
+    0% { transform: translate(0,0); }
+    100% { transform: translate(50px,50px); }
+  }
+
+  /* Container */
+  .container {
+    position: relative;
+    width: 380px;
+    padding: 40px;
+    border-radius: 20px;
+    backdrop-filter: blur(15px);
+    background: rgba(170,171,188,0.25);
+    border: 1px solid rgba(255,255,255,0.3);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    animation: float 4s ease-in-out infinite;
+    z-index: 10;
+  }
+
+  @keyframes float {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  /* Heading */
+  h2 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: #030303;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 25px;
+  }
+
+  .tabs button {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 10px;
+    color: #030303;
+    border-bottom: 2px solid transparent;
+    transition: 0.3s;
+  }
+
+  .tabs .active {
+    border-color: #675998;
+    color: #675998;
+    font-weight: bold;
+  }
+
+  /* Forms */
+  form {
+    display: none;
+    animation: slide 0.5s ease;
+  }
+
+  form.active {
+    display: block;
+  }
+
+  @keyframes slide {
+    from {opacity:0; transform: translateX(50px);}
+    to {opacity:1; transform: translateX(0);}
+  }
+
+  /* Inputs */
+  input {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    border-radius: 10px;
+    border: 1px solid #9CB9DF;
+    outline: none;
+  }
+
+  input:focus {
+    border-color: #675998;
+    box-shadow: 0 0 10px #67599833;
+  }
+
+  /* Button */
+  .btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: #675998;
+    color: #DFD8C9;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  .btn:hover {
+    background: #9CB9DF;
+    color: #030303;
+    transform: scale(1.03);
+  }
+
+  /* Switch text */
+  .switch {
+    text-align: center;
+    margin-top: 10px;
+    cursor: pointer;
+    color: #030303;
+    font-size: 0.9em;
+  }
+
+  .switch:hover {
+    color: #675998;
+  }
+  
+  /* Flash Messages inside login */
+  .flash {
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 10px;
+      font-size: 0.9em;
+      text-align: center;
+  }
+  .flash.error {
+      background-color: #fee2e2;
+      color: #991b1b;
+  }
+  .flash.success {
+      background-color: #d1fae5;
+      color: #065f46;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h2>EduDesk</h2>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="tabs">
+    <button class="active" id="loginBtn">Login</button>
+    <button id="signupBtn">Signup</button>
+  </div>
+
+  <!-- Login -->
+  <form id="login" class="active" action="{{ url_for('login') }}" method="POST">
+    <input type="email" name="email" placeholder="Email" required>
+    <input type="password" name="password" placeholder="Password" required>
+    <button type="submit" class="btn">Login</button>
+    <p class="switch" id="goSignup">Create Account</p>
+  </form>
+
+  <!-- Signup -->
+  <form id="signup" action="{{ url_for('signup') }}" method="POST">
+    <input type="text" name="name" placeholder="Full Name" required>
+    <input type="email" name="email" placeholder="Email" required>
+    <input type="password" name="password" placeholder="Password" required>
+    <button type="submit" class="btn">Signup</button>
+    <p class="switch" id="goLogin">Already have account?</p>
+  </form>
+
+</div>
+
+<script>
+const loginBtn = document.getElementById("loginBtn");
+const signupBtn = document.getElementById("signupBtn");
+const login = document.getElementById("login");
+const signup = document.getElementById("signup");
+
+loginBtn.onclick = () => {
+  loginBtn.classList.add("active");
+  signupBtn.classList.remove("active");
+  login.classList.add("active");
+  signup.classList.remove("active");
+};
+
+signupBtn.onclick = () => {
+  signupBtn.classList.add("active");
+  loginBtn.classList.remove("active");
+  signup.classList.add("active");
+  login.classList.remove("active");
+};
+
+document.getElementById("goSignup").onclick = () => signupBtn.click();
+document.getElementById("goLogin").onclick = () => loginBtn.click();
+</script>
+
+</body>
+</html>
