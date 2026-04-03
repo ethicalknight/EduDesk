@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}Student Reports{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom: 24px;">
+    <h3><i class="fa-solid fa-filter" style="color: var(--primary-color);"></i> Select Student</h3>
+    <form method="GET" action="{{ url_for('reports') }}" style="display: flex; gap: 16px; margin-top: 16px; align-items: flex-end;">
+        <div class="form-group" style="flex: 1;">
+            <label for="student_id">Search & Select Student</label>
+            <select name="student_id" id="student_id" class="form-control" required>
+                <option value="">-- Choose a Student --</option>
+                {% for student in students %}
+                <option value="{{ student.id }}" {% if selected_student and selected_student.id == student.id %}selected{% endif %}>
+                    {{ student.name }} ({{ student.roll_number }}) - {{ student.department }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="height: 42px;">
+            <i class="fa-solid fa-search"></i> Generate Report
+        </button>
+    </form>
+</div>
+
+{% if selected_student %}
+<div class="card" style="margin-bottom: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h2 style="margin: 0; color: var(--primary-color);">{{ selected_student.name }}</h2>
+            <p style="color: var(--text-muted); margin: 4px 0 0 0;"><i class="fa-solid fa-id-badge"></i> {{ selected_student.roll_number }} | <i class="fa-solid fa-building"></i> {{ selected_student.department }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-grid" style="margin-bottom: 24px;">
+    <div class="stat-card" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16,185,129,0.2);">
+        <div class="stat-icon" style="background-color: transparent; color: #10B981; border: 2px solid #10B981;">
+            <i class="fa-solid fa-check"></i>
+        </div>
+        <div class="stat-details">
+            <h3 style="color: #10B981;">Total Present</h3>
+            <p style="color: #10B981;">{{ present_days }} Days</p>
+        </div>
+    </div>
+
+    <div class="stat-card" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68,0.2);">
+        <div class="stat-icon" style="background-color: transparent; color: #ef4444; border: 2px solid #ef4444;">
+            <i class="fa-solid fa-xmark"></i>
+        </div>
+        <div class="stat-details">
+            <h3 style="color: #ef4444;">Total Absent</h3>
+            <p style="color: #ef4444;">{{ absent_days }} Days</p>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-star" style="color: #f59e0b;"></i> Academic Grades</h3>
+    <table class="styled-table">
+        <thead>
+            <tr>
+                <th>Subject</th>
+                <th>Teacher</th>
+                <th>Assessment</th>
+                <th>Score</th>
+                <th>Percentage</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for grade in student_grades %}
+            <tr>
+                <td>{{ grade.subject.name }}</td>
+                <td>{{ grade.subject.teacher.name if grade.subject.teacher else 'Unassigned' }}</td>
+                <td>{{ grade.assessment }}</td>
+                <td><strong>{{ grade.score }}</strong> / {{ grade.max_score }}</td>
+                <td>
+                    {% set percentage = (grade.score / grade.max_score) * 100 %}
+                    <span class="grade-badge {% if percentage >= 80 %}grade-high{% elif percentage >= 60 %}grade-medium{% else %}grade-low{% endif %}">
+                        {{ "%.1f"|format(percentage) }}%
+                    </span>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="text-align:center; color: var(--text-muted);">No grades recorded for this student.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card" style="text-align: center; padding: 48px;">
+    <i class="fa-solid fa-file-invoice" style="font-size: 4rem; color: var(--border-color); margin-bottom: 16px;"></i>
+    <h3 style="color: var(--text-muted);">Please select a student above to view their comprehensive report.</h3>
+</div>
+{% endif %}
+{% endblock %}

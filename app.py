@@ -1,5 +1,7 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+import csv
+from io import StringIO
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, Student, Subject, Attendance, Grade, Timetable
@@ -10,6 +12,20 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'hackathon_secret_key_123'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///edudesk.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+import math
+
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371000 # Radius of Earth in meters
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+    a = math.sin(delta_phi / 2.0) ** 2 + \
+        math.cos(phi1) * math.cos(phi2) * \
+        math.sin(delta_lambda / 2.0) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
 
 db.init_app(app)
 
@@ -25,17 +41,18 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 def create_dummy_data():
-    if Subject.query.first() is None:
-        sub1 = Subject(code="CS201", name="Data Structures", credits=4)
-        sub2 = Subject(code="CS202", name="Web Development", credits=3)
-        db.session.add_all([sub1, sub2])
+    if User.query.first() is None:
+        admin = User(name="Admin", email="admin@edudesk.com", password_hash=generate_password_hash("admin123"), role="Admin")
+        teacher = User(name="Teacher", email="teacher@edudesk.com", password_hash=generate_password_hash("teacher123"), role="Teacher")
+        db.session.add_all([admin, teacher])
         db.session.commit()
 
-    if User.query.first() is None:
-        sub1 = Subject.query.filter_by(code="CS201").first()
-        admin = User(name="Admin", email="admin@edudesk.com", password_hash=generate_password_hash("admin123"), role="Admin")
-        teacher = User(name="Teacher", email="teacher@edudesk.com", password_hash=generate_password_hash("teacher123"), role="Teacher", subject_id=sub1.id if sub1 else None)
-        db.session.add_all([admin, teacher])
+    if Subject.query.first() is None:
+        teacher = User.query.filter_by(email="teacher@edudesk.com").first()
+        t_id = teacher.id if teacher else None
+        sub1 = Subject(code="CS201", name="Data Structures", credits=4, teacher_id=t_id)
+        sub2 = Subject(code="CS202", name="Web Development", credits=3, teacher_id=t_id)
+        db.session.add_all([sub1, sub2])
         db.session.commit()
 
     if Student.query.first() is None:
@@ -114,7 +131,27 @@ def dashboard():
     
     total_attendance_records = Attendance.query.count()
     present_records = Attendance.query.filter_by(status='Present').count()
+    absent_records = total_attendance_records - present_records
     attendance_percentage = int((present_records / total_attendance_records * 100)) if total_attendance_records > 0 else 0
+    
+    import datetime as dt
+    today = dt.datetime.utcnow().date()
+    dates = [(today - dt.timedelta(days=i)) for i in range(6, -1, -1)]
+    date_labels = [d.strftime('%b %d') for d in dates]
+    trend_data = []
+    for d in dates:
+        trend_data.append(Attendance.query.filter_by(date=d, status='Present').count())
+        
+    students = Student.query.all()
+    at_risk_students = []
+    for st in students:
+        st_total = Attendance.query.filter_by(student_id=st.id).count()
+        if st_total >= 3:
+            st_present = Attendance.query.filter_by(student_id=st.id, status='Present').count()
+            perc = (st_present / st_total) * 100
+            if perc < 75:
+                at_risk_students.append({'name': st.name, 'roll': st.roll_number, 'percentage': int(perc)})
+    at_risk_students = sorted(at_risk_students, key=lambda x: x['percentage'])[:5]
     
     recent_attendance = Attendance.query.order_by(Attendance.date.desc()).limit(5).all()
     
@@ -122,7 +159,12 @@ def dashboard():
                            total_students=total_students, 
                            total_subjects=total_subjects, 
                            attendance_percentage=attendance_percentage,
-                           recent_attendance=recent_attendance)
+                           recent_attendance=recent_attendance,
+                           present_records=present_records,
+                           absent_records=absent_records,
+                           date_labels=date_labels,
+                           trend_data=trend_data,
+                           at_risk_students=at_risk_students)
 
 @app.route('/attendance', methods=['GET', 'POST'])
 @login_required
@@ -294,9 +336,11 @@ def add_teacher():
 def generate_qr_token():
     subject_id = request.form.get('subject_id')
     date_str = str(datetime.utcnow().date())
+    lat = request.form.get('lat')
+    lon = request.form.get('lon')
     
     s = get_serializer()
-    payload = {'subject_id': subject_id, 'date': date_str}
+    payload = {'subject_id': subject_id, 'date': date_str, 'lat': lat, 'lon': lon}
     token = s.dumps(payload)
     
     qr_url = url_for('scan_qr', token=token, _external=True)
@@ -310,6 +354,8 @@ def scan_qr(token):
         payload = s.loads(token, max_age=120)
         subject_id = payload['subject_id']
         date_str = payload['date']
+        teacher_lat = payload.get('lat')
+        teacher_lon = payload.get('lon')
     except SignatureExpired:
         return "This QR code has expired. Please ask the instructor for the latest code.", 400
     except BadTimeSignature:
@@ -322,6 +368,18 @@ def scan_qr(token):
     if request.method == 'POST':
         roll_number = request.form.get('roll_number')
         fingerprint = request.form.get('fingerprint')
+        student_lat = request.form.get('lat')
+        student_lon = request.form.get('lon')
+
+        # Geofencing check
+        if teacher_lat and teacher_lon and student_lat and student_lon:
+            try:
+                dist = haversine(float(teacher_lat), float(teacher_lon), float(student_lat), float(student_lon))
+                if dist > 100:
+                    flash(f"Geofence Alert: You are {int(dist)} meters away from the classroom. Attendance rejected.", 'error')
+                    return redirect(url_for('scan_qr', token=token))
+            except ValueError:
+                pass # ignore parsing errors
 
         # Discourage Proxy attendance
         existing_fingerprint = Attendance.query.filter_by(
@@ -374,6 +432,91 @@ def daily_absent_hook():
                 
     db.session.commit()
     return jsonify({"message": "Daily absent hook completed", "date": str(today)})
+
+@app.route('/reports')
+@login_required
+def reports():
+    student_id = request.args.get('student_id')
+    students = Student.query.all()
+    
+    selected_student = None
+    present_days = 0
+    absent_days = 0
+    student_grades = []
+    
+    if student_id:
+        selected_student = Student.query.get(student_id)
+        if selected_student:
+            present_days = Attendance.query.filter_by(student_id=student_id, status='Present').count()
+            absent_days = Attendance.query.filter_by(student_id=student_id, status='Absent').count()
+            student_grades = Grade.query.filter_by(student_id=student_id).all()
+            
+    return render_template('reports.html', 
+                           students=students, 
+                           selected_student=selected_student,
+                           present_days=present_days,
+                           absent_days=absent_days,
+                           student_grades=student_grades)
+
+@app.route('/analytics')
+@login_required
+def analytics():
+    import datetime as dt
+    today = dt.datetime.utcnow().date()
+    dates = [(today - dt.timedelta(days=i)) for i in range(14, -1, -1)]
+    date_labels = [d.strftime('%b %d') for d in dates]
+    
+    trend_data = []
+    for d in dates:
+        trend_data.append(Attendance.query.filter_by(date=d, status='Present').count())
+        
+    total_present = Attendance.query.filter_by(status='Present').count()
+    total_absent = Attendance.query.filter_by(status='Absent').count()
+    
+    return render_template('analytics.html',
+                           date_labels=date_labels,
+                           trend_data=trend_data,
+                           total_present=total_present,
+                           total_absent=total_absent)
+
+@app.route('/export/attendance')
+@login_required
+def export_attendance():
+    if current_user.role != 'Admin' and current_user.role != 'Teacher':
+         return redirect(url_for('dashboard'))
+    
+    si = StringIO()
+    cw = csv.writer(si)
+    cw.writerow(['ID', 'Date', 'Student Name', 'Roll Number', 'Subject', 'Status']) # Header
+    
+    logs = Attendance.query.all()
+    for log in logs:
+        cw.writerow([log.id, log.date, log.student.name, log.student.roll_number, log.subject.name, log.status])
+        
+    output = make_response(si.getvalue())
+    output.headers["Content-Disposition"] = "attachment; filename=attendance_export.csv"
+    output.headers["Content-type"] = "text/csv"
+    return output
+
+@app.route('/export/grades')
+@login_required
+def export_grades():
+    if current_user.role != 'Admin' and current_user.role != 'Teacher':
+         return redirect(url_for('dashboard'))
+         
+    si = StringIO()
+    cw = csv.writer(si)
+    cw.writerow(['ID', 'Student Name', 'Roll Number', 'Subject', 'Assessment', 'Score', 'Max Score', 'Percentage'])
+    
+    grades = Grade.query.all()
+    for g in grades:
+        perc = round((g.score / g.max_score) * 100, 2) if g.max_score > 0 else 0
+        cw.writerow([g.id, g.student.name, g.student.roll_number, g.subject.name, g.assessment, g.score, g.max_score, f"{perc}%"])
+        
+    output = make_response(si.getvalue())
+    output.headers["Content-Disposition"] = "attachment; filename=grades_export.csv"
+    output.headers["Content-type"] = "text/csv"
+    return output
 
 if __name__ == '__main__':
     app.run(debug=True)

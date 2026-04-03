@@ -12,7 +12,7 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), nullable=False, default='Teacher') # 'Admin' or 'Teacher'
     subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=True)
     
-    subject = db.relationship('Subject', backref='teachers')
+    subject = db.relationship('Subject', foreign_keys=[subject_id], backref='users_as_teachers')
 
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -35,6 +35,9 @@ class Subject(db.Model):
     code = db.Column(db.String(20), unique=True, nullable=False)
     name = db.Column(db.String(100), nullable=False)
     credits = db.Column(db.Integer, nullable=False, default=3)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) # Reference to User (Teacher)
+
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref='subjects')
     
     attendances = db.relationship('Attendance', backref='subject', lazy=True)
     grades = db.relationship('Grade', backref='subject', lazy=True)

@@ -36,7 +36,8 @@
         </div>
         <div class="form-group">
             <label for="max_score">Max Score</label>
-            <input type="number" step="0.1" name="max_score" id="max_score" class="form-control" value="100" required>
+            <input type="number" step="0.1" name="max_score" id="max_score" class="form-control" max-value="100"
+                required>
         </div>
         <div class="form-group" style="display: flex; align-items: flex-end;">
             <button type="submit" class="btn btn-primary btn-save" style="width: 100%; height: 42px;">
@@ -47,7 +48,10 @@
 </div>
 
 <div class="card">
-    <h3><i class="fa-solid fa-chart-bar" style="color: var(--secondary-color);"></i> Grade Records</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h3 style="margin: 0;"><i class="fa-solid fa-chart-bar" style="color: var(--secondary-color);"></i> Grade Records</h3>
+        <a href="{{ url_for('export_grades') }}" class="btn btn-secondary"><i class="fa-solid fa-file-csv"></i> Export CSV</a>
+    </div>
     <table class="styled-table">
         <thead>
             <tr>

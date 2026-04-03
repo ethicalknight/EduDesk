@@ -53,9 +53,14 @@
         </table>
         
         <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center;">
-            <button type="button" id="generateBtn" class="btn btn-secondary" style="background-color: var(--sidebar-bg); color: #fff;">
-                <i class="fa-solid fa-qrcode"></i> Generate Live QR code
-            </button>
+            <div>
+                <button type="button" id="generateBtn" class="btn btn-secondary" style="background-color: var(--sidebar-bg); color: #fff;">
+                    <i class="fa-solid fa-qrcode"></i> Generate Live QR code
+                </button>
+                <a href="{{ url_for('export_attendance') }}" class="btn btn-secondary" style="margin-left: 8px;">
+                    <i class="fa-solid fa-file-csv"></i> Export CSV
+                </a>
+            </div>
             <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check" style="margin-right: 8px;"></i> Submit Attendance</button>
         </div>
 
@@ -91,6 +96,9 @@
     let refreshInterval = null;
     let countdownInterval = null;
     let timeLeft = 120;
+    
+    let teacherLat = null;
+    let teacherLon = null;
 
     async function fetchQRToken() {
         const subjectId = subjectSelect.value;
@@ -99,6 +107,10 @@
         try {
             const formData = new FormData();
             formData.append('subject_id', subjectId);
+            if (teacherLat && teacherLon) {
+                formData.append('lat', teacherLat);
+                formData.append('lon', teacherLon);
+            }
             
             const response = await fetch("{{ url_for('generate_qr_token') }}", {
                 method: 'POST',
@@ -107,7 +119,6 @@
             const data = await response.json();
             
             if (data.url) {
-                // Clear previous
                 document.getElementById('qrcode').innerHTML = "";
                 qrCode = new QRCode(document.getElementById("qrcode"), {
                     text: data.url,
@@ -139,17 +150,34 @@
         }, 1000);
     }
 
+    function startQRFlow() {
+        fetchQRToken();
+        clearInterval(refreshInterval);
+        refreshInterval = setInterval(fetchQRToken, 119000);
+    }
+
     generateBtn.addEventListener('click', (e) => {
         e.preventDefault(); // don't submit the form
         if (!subjectSelect.value) {
             alert('Please select a subject first.');
             return;
         }
-        
-        fetchQRToken();
-        
-        clearInterval(refreshInterval);
-        refreshInterval = setInterval(fetchQRToken, 119000);
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    teacherLat = position.coords.latitude;
+                    teacherLon = position.coords.longitude;
+                    startQRFlow();
+                },
+                (error) => {
+                    console.warn("Geolocation denied/failed. Geofencing bypassed.", error);
+                    startQRFlow();
+                }
+            );
+        } else {
+            startQRFlow();
+        }
     });
 </script>
 {% endblock %}

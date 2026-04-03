@@ -63,6 +63,12 @@
 
         <form method="POST" action="{{ url_for('scan_qr', token=token) }}">
             <input type="hidden" name="fingerprint" id="fingerprint">
+            <input type="hidden" name="lat" id="lat">
+            <input type="hidden" name="lon" id="lon">
+            
+            <div id="geoAlert" style="display:none; color: #ef4444; background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.9em; border: 1px solid rgba(239, 68, 68, 0.2);">
+               <i class="fa-solid fa-triangle-exclamation"></i> Please enable Location Access! Your attendance may be rejected if you are too far from the classroom.
+            </div>
             
             <div class="form-group">
                 <label for="name">Full Name</label>
@@ -124,6 +130,20 @@
                 console.error("Fingerprinting failed.", e);
                 // Fallback basic fingerprint
                 document.getElementById('fingerprint').value = navigator.userAgent + "-" + screen.width + "x" + screen.height;
+            }
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        document.getElementById('lat').value = position.coords.latitude;
+                        document.getElementById('lon').value = position.coords.longitude;
+                    },
+                    (error) => {
+                        document.getElementById('geoAlert').style.display = 'block';
+                    }
+                );
+            } else {
+                document.getElementById('geoAlert').style.display = 'block';
             }
         });
     </script>

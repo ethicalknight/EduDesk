@@ -35,10 +35,31 @@
     </div>
 </div>
 
-<div class="card" style="margin-bottom: 24px;">
-    <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-chart-line" style="color: var(--primary-color);"></i>
-        Academic Performance Analytics</h3>
-    <canvas id="performanceChart" height="80"></canvas>
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
+    <div class="card" style="margin-bottom: 0;">
+        <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-chart-line" style="color: var(--primary-color);"></i>
+            7-Day Attendance Trend</h3>
+        <canvas id="performanceChart" height="100"></canvas>
+    </div>
+    
+    <div class="card" style="margin-bottom: 0;">
+        <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-chart-pie" style="color: var(--secondary-color);"></i>
+            Overall Ratio</h3>
+        <canvas id="ratioChart" height="100"></canvas>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 24px; border-left: 4px solid #ef4444;">
+    <h3 style="margin-bottom: 16px; color: #ef4444;"><i class="fa-solid fa-triangle-exclamation" style="margin-right: 8px;"></i> At-Risk Students (< 75%)</h3>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        {% for risk in at_risk_students %}
+        <div style="background: rgba(239, 68, 68, 0.1); padding: 8px 16px; border-radius: 20px; border: 1px solid rgba(239, 68, 68, 0.2); font-weight: 500; display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-user" style="color: #ef4444;"></i> {{ risk.name }} ({{ risk.roll }}) - <span style="color: #ef4444; font-weight: bold;">{{ risk.percentage }}%</span>
+        </div>
+        {% else %}
+        <p style="color: var(--text-muted); margin: 0;">No students are currently at risk! 🎉</p>
+        {% endfor %}
+    </div>
 </div>
 
 <div class="card">
@@ -83,33 +104,49 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const ctx = document.getElementById('performanceChart').getContext('2d');
-    const performanceChart = new Chart(ctx, {
+    const lineCtx = document.getElementById('performanceChart').getContext('2d');
+    const performanceChart = new Chart(lineCtx, {
         type: 'line',
         data: {
-            labels: ['Assessment 1', 'Assessment 2', 'Midterm', 'Assessment 3', 'Finals (Proj)'],
+            labels: {{ date_labels | tojson }},
             datasets: [{
-                label: 'Average Class Score (%)',
-                data: [72, 76, 82, 80, 88],
-                borderColor: '#675998',
-                backgroundColor: '#67599833',
+                label: 'Students Present',
+                data: {{ trend_data | tojson }},
+                borderColor: '#10B981',
+                backgroundColor: 'rgba(16, 185, 129, 0.2)',
                 borderWidth: 3,
                 fill: true,
                 tension: 0.4,
-                pointBackgroundColor: '#DFD8C9',
-                pointBorderColor: '#675998',
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: '#10B981',
                 pointBorderWidth: 2,
                 pointRadius: 4,
             }]
         },
         options: {
             responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, suggestedMax: 30 } }
+        }
+    });
+
+    const pieCtx = document.getElementById('ratioChart').getContext('2d');
+    const ratioChart = new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Present', 'Absent'],
+            datasets: [{
+                data: [{{ present_records }}, {{ absent_records }}],
+                backgroundColor: ['#10B981', '#ef4444'],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
             plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: { beginAtZero: true, max: 100 }
+                legend: { position: 'bottom' }
             }
         }
     });

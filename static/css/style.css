@@ -1,60 +1,62 @@
 :root {
-    --primary-color: #cac1ea;
-    --primary-hover: #9CB9DF;
-    --secondary-color: #AAABBC;
+    --primary-color: #6366f1; /* Indigo 500 */
+    --primary-hover: #4f46e5; /* Indigo 600 */
+    --secondary-color: #64748b; /* Slate 500 */
 
-    --bg-color: #DFD8C9;
+    --bg-color: #f8fafc; /* Slate 50 */
 
-    --sidebar-bg: #5b4c90;
-    --sidebar-text: #DFD8C9;
-    --sidebar-hover: #9CB9DF;
-    --sidebar-active-text: #030303;
+    --sidebar-bg: #1e293b; /* Slate 800 */
+    --sidebar-text: #f8fafc;
+    --sidebar-hover: #334155;
+    --sidebar-active-text: #ffffff;
 
-    --card-bg: #AAABBC;
-    --card-border: rgba(3, 3, 3, 0.1);
+    --card-bg: rgba(255, 255, 255, 0.7);
+    --card-border: rgba(255, 255, 255, 0.5);
 
-    --text-main: #030303;
-    --text-muted: rgba(3, 3, 3, 0.55);
-    --border-color: rgba(3, 3, 3, 0.1);
+    --text-main: #020617; /* Very Dark Slate (almost black) */
+    --text-muted: #334155; /* Slate 700 (solid dark gray) */
+    --border-color: rgba(15, 23, 42, 0.1);
 
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
-    --shadow-float: 0 15px 20px -5px rgba(0, 0, 0, 0.25);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --shadow-float: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
 
-    --transition: all 0.3s ease;
+    --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 :root.dark-mode {
-    --primary-color: #8b7cd2;
-    --primary-hover: #5b4c90;
-    --secondary-color: #4c4e6e;
+    --primary-color: #818cf8; /* Indigo 400 */
+    --primary-hover: #6366f1; /* Indigo 500 */
+    --secondary-color: #94a3b8; /* Slate 400 */
 
-    --bg-color: #121212;
+    --bg-color: #0f172a; /* Slate 900 */
 
-    --sidebar-bg: #1e1e24;
-    --sidebar-text: #e0e0e0;
-    --sidebar-hover: #2d2d38;
+    --sidebar-bg: rgba(30, 41, 59, 0.95);
+    --sidebar-text: #f1f5f9;
+    --sidebar-hover: rgba(51, 65, 85, 0.95);
     --sidebar-active-text: #ffffff;
 
-    --card-bg: #1e1e24;
-    --card-border: rgba(255, 255, 255, 0.05);
+    --card-bg: rgba(30, 41, 59, 0.6);
+    --card-border: rgba(255, 255, 255, 0.1);
 
-    --text-main: #e0e0e0;
-    --text-muted: rgba(255, 255, 255, 0.55);
+    --text-main: #ffffff;
+    --text-muted: rgba(255, 255, 255, 0.85);
     --border-color: rgba(255, 255, 255, 0.1);
 
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-    --shadow-float: 0 15px 20px -5px rgba(0, 0, 0, 0.6);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+    --shadow-float: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
 }
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 body {
@@ -171,6 +173,8 @@ body {
 .topbar {
     height: 70px;
     background-color: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -259,6 +263,8 @@ body {
 /* Premium Card Design */
 .card {
     background-color: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-radius: 16px;
     padding: 28px;
     box-shadow: var(--shadow-md);
@@ -289,21 +295,30 @@ input.form-control,
 select.form-control {
     width: 100%;
     padding: 12px 16px;
-    border: 1px solid rgba(3, 3, 3, 0.2);
+    border: 1px solid var(--border-color);
     border-radius: 10px;
     font-size: 1rem;
     transition: var(--transition);
-    background-color: var(--bg-color);
-    /* Light cream for inputs inside gray cards */
+    background-color: rgba(255, 255, 255, 0.4);
     color: var(--text-main);
+}
+
+:root.dark-mode input.form-control,
+:root.dark-mode select.form-control {
+    background-color: rgba(0, 0, 0, 0.2);
 }
 
 input.form-control:focus,
 select.form-control:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 4px rgba(103, 89, 152, 0.25);
-    background-color: var(--bg-color);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25);
+    background-color: rgba(255, 255, 255, 0.6);
+}
+
+:root.dark-mode input.form-control:focus,
+:root.dark-mode select.form-control:focus {
+    background-color: rgba(0, 0, 0, 0.4);
 }
 
 /* Buttons Engine */
@@ -324,7 +339,7 @@ select.form-control:focus {
 
 .btn-primary {
     background-color: var(--primary-color);
-    color: #1a1a24;
+    color: #ffffff;
     box-shadow: var(--shadow-sm);
 }
 
@@ -349,10 +364,16 @@ table.styled-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 16px;
-    background-color: var(--bg-color);
+    background-color: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     border-radius: 12px;
     overflow: hidden;
     box-shadow: var(--shadow-sm);
+}
+
+:root.dark-mode table.styled-table {
+    background-color: rgba(0, 0, 0, 0.15);
 }
 
 table.styled-table th,
@@ -388,10 +409,13 @@ table.styled-table tbody tr:hover {
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 24px;
     margin-bottom: 32px;
-    background-color: #392682;
+    background-color: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     padding: 24px;
     border-radius: 16px;
     box-shadow: var(--shadow-md);
+    border: 1px solid var(--card-border);
 }
 
 .stat-card {

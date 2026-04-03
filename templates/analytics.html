@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Analytics{% endblock %}
+{% block page_title %}System Analytics{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
+    <!-- Line Chart Card -->
+    <div class="card" style="margin-bottom: 0;">
+        <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-chart-line" style="color: var(--primary-color);"></i>
+            14-Day Attendance Trend</h3>
+        <canvas id="trendChart" height="100"></canvas>
+    </div>
+    
+    <!-- Pie Chart Card -->
+    <div class="card" style="margin-bottom: 0;">
+        <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-chart-pie" style="color: var(--secondary-color);"></i>
+            Total System Presence</h3>
+        <canvas id="proportionChart" height="100"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    Chart.defaults.font.family = "'Inter', sans-serif";
+
+    // Trend Line Chart
+    const lineCtx = document.getElementById('trendChart').getContext('2d');
+    new Chart(lineCtx, {
+        type: 'line',
+        data: {
+            labels: {{ date_labels | tojson }},
+            datasets: [{
+                label: 'System Wide Present Count',
+                data: {{ trend_data | tojson }},
+                borderColor: '#4F46E5', // Indigo
+                backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: '#4F46E5',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, suggestedMax: 10 } }
+        }
+    });
+
+    // Proportion Doughnut Chart
+    const pieCtx = document.getElementById('proportionChart').getContext('2d');
+    new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Present Total', 'Absent Total'],
+            datasets: [{
+                data: [{{ total_present }}, {{ total_absent }}],
+                backgroundColor: ['#4F46E5', '#64748b'], // Indigo and Slate
+                hoverOffset: 4,
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: 'var(--text-main)' } }
+            }
+        }
+    });
+</script>
+{% endblock %}
