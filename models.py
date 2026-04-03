@@ -10,6 +10,9 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='Teacher') # 'Admin' or 'Teacher'
+    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=True)
+    
+    subject = db.relationship('Subject', backref='teachers')
 
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -19,6 +22,10 @@ class Student(db.Model):
     phone = db.Column(db.String(20), nullable=True)
     department = db.Column(db.String(50), nullable=True)
     semester = db.Column(db.Integer, nullable=True)
+    batch = db.Column(db.String(50), nullable=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    
+    teacher = db.relationship('User', backref='students')
     
     attendances = db.relationship('Attendance', backref='student', lazy=True)
     grades = db.relationship('Grade', backref='student', lazy=True)
@@ -39,6 +46,7 @@ class Attendance(db.Model):
     subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=False)
     date = db.Column(db.Date, nullable=False, default=datetime.utcnow)
     status = db.Column(db.String(10), nullable=False) # 'Present', 'Absent'
+    fingerprint = db.Column(db.String(255), nullable=True)
 
 class Grade(db.Model):
     id = db.Column(db.Integer, primary_key=True)

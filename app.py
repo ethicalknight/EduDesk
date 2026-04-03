@@ -1,9 +1,10 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, Student, Subject, Attendance, Grade, Timetable
 from datetime import datetime
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'hackathon_secret_key_123'
@@ -16,27 +17,36 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
+def get_serializer():
+    return URLSafeTimedSerializer(app.config['SECRET_KEY'])
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
 def create_dummy_data():
+    if Subject.query.first() is None:
+        sub1 = Subject(code="CS201", name="Data Structures", credits=4)
+        sub2 = Subject(code="CS202", name="Web Development", credits=3)
+        db.session.add_all([sub1, sub2])
+        db.session.commit()
+
     if User.query.first() is None:
+        sub1 = Subject.query.filter_by(code="CS201").first()
         admin = User(name="Admin", email="admin@edudesk.com", password_hash=generate_password_hash("admin123"), role="Admin")
-        db.session.add(admin)
-        teacher = User(name="Teacher", email="teacher@edudesk.com", password_hash=generate_password_hash("teacher123"), role="Teacher")
-        db.session.add(teacher)
+        teacher = User(name="Teacher", email="teacher@edudesk.com", password_hash=generate_password_hash("teacher123"), role="Teacher", subject_id=sub1.id if sub1 else None)
+        db.session.add_all([admin, teacher])
         db.session.commit()
 
     if Student.query.first() is None:
-        s1 = Student(roll_number="CS101", name="Alice Smith", email="alice@example.com", phone="1234567890", department="Computer Science", semester=3)
-        s2 = Student(roll_number="CS102", name="Bob Johnson", email="bob@example.com", phone="0987654321", department="Computer Science", semester=3)
-        s3 = Student(roll_number="CS103", name="Charlie Brown", email="charlie@example.com", phone="1112223333", department="Computer Science", semester=3)
+        teacher = User.query.filter_by(email="teacher@edudesk.com").first()
+        t_id = teacher.id if teacher else None
         
-        sub1 = Subject(code="CS201", name="Data Structures", credits=4)
-        sub2 = Subject(code="CS202", name="Web Development", credits=3)
-
-        db.session.add_all([s1, s2, s3, sub1, sub2])
+        s1 = Student(roll_number="CS101", name="Alice Smith", email="alice@example.com", phone="1234567890", department="Computer Science", semester=3, teacher_id=t_id)
+        s2 = Student(roll_number="CS102", name="Bob Johnson", email="bob@example.com", phone="0987654321", department="Computer Science", semester=3, teacher_id=t_id)
+        s3 = Student(roll_number="CS103", name="Charlie Brown", email="charlie@example.com", phone="1112223333", department="Computer Science", semester=3, teacher_id=None)
+        
+        db.session.add_all([s1, s2, s3])
         db.session.commit()
 
         t1 = Timetable(subject_id=sub1.id, day="Monday", start_time="09:00", end_time="10:30", room="Room 101")
@@ -118,7 +128,10 @@ def dashboard():
 @login_required
 def attendance():
     subjects = Subject.query.all()
-    students = Student.query.all()
+    if current_user.role == 'Admin':
+        students = Student.query.all()
+    else:
+        students = Student.query.filter_by(teacher_id=current_user.id).all()
     
     if request.method == 'POST':
         subject_id = request.form.get('subject_id')
@@ -148,8 +161,12 @@ def attendance():
 @login_required
 def grades():
     subjects = Subject.query.all()
-    students = Student.query.all()
-    all_grades = Grade.query.join(Student).join(Subject).order_by(Grade.id.desc()).all()
+    if current_user.role == 'Admin':
+        students = Student.query.all()
+        all_grades = Grade.query.join(Student).join(Subject).order_by(Grade.id.desc()).all()
+    else:
+        students = Student.query.filter_by(teacher_id=current_user.id).all()
+        all_grades = Grade.query.join(Student).join(Subject).filter(Student.teacher_id==current_user.id).order_by(Grade.id.desc()).all()
     
     if request.method == 'POST':
         student_id = request.form.get('student_id')
@@ -169,8 +186,13 @@ def grades():
 @app.route('/students')
 @login_required
 def students():
-    all_students = Student.query.all()
-    return render_template('students.html', students=all_students)
+    if current_user.role == 'Admin':
+        all_students = Student.query.all()
+        teachers = User.query.filter_by(role='Teacher').all()
+    else:
+        all_students = Student.query.filter_by(teacher_id=current_user.id).all()
+        teachers = []
+    return render_template('students.html', students=all_students, teachers=teachers)
 
 @app.route('/add_student', methods=['POST'])
 @login_required
@@ -182,11 +204,16 @@ def add_student():
     department = request.form.get('department')
     semester = request.form.get('semester')
     
+    if current_user.role == 'Admin':
+        teacher_id = request.form.get('teacher_id') or None
+    else:
+        teacher_id = current_user.id
+
     existing = Student.query.filter_by(roll_number=roll_number).first()
     if existing:
         flash('Student with this roll number already exists.', 'error')
     else:
-        new_student = Student(roll_number=roll_number, name=name, email=email, phone=phone, department=department, semester=semester)
+        new_student = Student(roll_number=roll_number, name=name, email=email, phone=phone, department=department, semester=semester, teacher_id=teacher_id)
         db.session.add(new_student)
         db.session.commit()
         flash('Student added successfully!', 'success')
@@ -197,7 +224,28 @@ def add_student():
 @login_required
 def timetable():
     schedule = Timetable.query.join(Subject).order_by(Timetable.day, Timetable.start_time).all()
-    return render_template('timetable.html', schedule=schedule)
+    subjects = Subject.query.all()
+    return render_template('timetable.html', schedule=schedule, subjects=subjects)
+
+@app.route('/add_timetable', methods=['POST'])
+@login_required
+def add_timetable():
+    if current_user.role != 'Admin':
+        flash('Access Denied', 'error')
+        return redirect(url_for('dashboard'))
+        
+    subject_id = request.form.get('subject_id')
+    day = request.form.get('day')
+    start_time = request.form.get('start_time')
+    end_time = request.form.get('end_time')
+    room = request.form.get('room')
+    
+    new_tt = Timetable(subject_id=subject_id, day=day, start_time=start_time, end_time=end_time, room=room)
+    db.session.add(new_tt)
+    db.session.commit()
+    flash('Timetable entry added successfully!', 'success')
+        
+    return redirect(url_for('timetable'))
 
 @app.route('/teachers')
 @login_required
@@ -206,7 +254,8 @@ def teachers():
         flash('Access Denied: Only Admins can view teachers.', 'error')
         return redirect(url_for('dashboard'))
     all_teachers = User.query.filter_by(role='Teacher').all()
-    return render_template('teachers.html', teachers=all_teachers)
+    subjects = Subject.query.all()
+    return render_template('teachers.html', teachers=all_teachers, subjects=subjects)
 
 @app.route('/add_teacher', methods=['POST'])
 @login_required
@@ -218,17 +267,113 @@ def add_teacher():
     name = request.form.get('name')
     email = request.form.get('email')
     password = request.form.get('password')
+    subject_name = request.form.get('subject_name')
+    
+    subject_id = None
+    if subject_name:
+        subject = Subject.query.filter_by(name=subject_name).first()
+        if not subject:
+            subject = Subject(code=subject_name.upper().replace(' ', '_')[:20], name=subject_name, credits=3)
+            db.session.add(subject)
+            db.session.commit()
+        subject_id = subject.id
     
     existing = User.query.filter_by(email=email).first()
     if existing:
         flash('User with this email already exists.', 'error')
     else:
-        new_teacher = User(name=name, email=email, password_hash=generate_password_hash(password), role='Teacher')
+        new_teacher = User(name=name, email=email, password_hash=generate_password_hash(password), role='Teacher', subject_id=subject_id)
         db.session.add(new_teacher)
         db.session.commit()
         flash('Teacher added successfully!', 'success')
         
     return redirect(url_for('teachers'))
+
+@app.route('/generate_qr_token', methods=['POST'])
+@login_required
+def generate_qr_token():
+    subject_id = request.form.get('subject_id')
+    date_str = str(datetime.utcnow().date())
+    
+    s = get_serializer()
+    payload = {'subject_id': subject_id, 'date': date_str}
+    token = s.dumps(payload)
+    
+    qr_url = url_for('scan_qr', token=token, _external=True)
+    return jsonify({'url': qr_url})
+
+@app.route('/scan/<token>', methods=['GET', 'POST'])
+def scan_qr(token):
+    s = get_serializer()
+    try:
+        # Token valid for 60 seconds
+        payload = s.loads(token, max_age=120)
+        subject_id = payload['subject_id']
+        date_str = payload['date']
+    except SignatureExpired:
+        return "This QR code has expired. Please ask the instructor for the latest code.", 400
+    except BadTimeSignature:
+        return "Invalid QR code.", 400
+
+    subject = Subject.query.get(subject_id)
+    if not subject:
+        return "Invalid Subject", 400
+
+    if request.method == 'POST':
+        roll_number = request.form.get('roll_number')
+        fingerprint = request.form.get('fingerprint')
+
+        # Discourage Proxy attendance
+        existing_fingerprint = Attendance.query.filter_by(
+            subject_id=subject.id, 
+            date=datetime.strptime(date_str, '%Y-%m-%d').date(), 
+            fingerprint=fingerprint
+        ).first()
+
+        student = Student.query.filter_by(roll_number=roll_number).first()
+        if not student:
+            flash(f"Student with Roll No {roll_number} not found. Please contact admin.", 'error')
+            return redirect(url_for('scan_qr', token=token))
+            
+        if existing_fingerprint and existing_fingerprint.student_id != student.id:
+            flash("Proxy attendance detected. This device has already marked attendance for someone else.", "error")
+            return redirect(url_for('scan_qr', token=token))
+
+        existing_attendance = Attendance.query.filter_by(student_id=student.id, subject_id=subject.id, date=datetime.strptime(date_str, '%Y-%m-%d').date()).first()
+        if existing_attendance:
+            existing_attendance.status = 'Present'
+            if not existing_attendance.fingerprint:
+                existing_attendance.fingerprint = fingerprint
+        else:
+            new_attendance = Attendance(student_id=student.id, subject_id=subject.id, 
+                                        date=datetime.strptime(date_str, '%Y-%m-%d').date(), 
+                                        status='Present', fingerprint=fingerprint)
+            db.session.add(new_attendance)
+        
+        db.session.commit()
+        return "Attendance Marked Successfully as Present!"
+
+    return render_template('smart_form.html', subject=subject, token=token)
+
+@app.route('/cron/daily_absent_hook', methods=['POST'])
+def daily_absent_hook():
+    today = datetime.utcnow().date()
+    students = Student.query.all()
+    
+    # We find all subjects that had at least one attendance entry today
+    active_subjects_today = db.session.query(Attendance.subject_id).filter_by(date=today).distinct().all()
+    active_subject_ids = [s[0] for s in active_subjects_today]
+
+    for subject_id in active_subject_ids:
+        for student in students:
+            # We assume all students need to be marked absent if they didn't attend
+            att = Attendance.query.filter_by(student_id=student.id, subject_id=subject_id, date=today).first()
+            if not att:
+                absent = Attendance(student_id=student.id, subject_id=subject_id, date=today, status='Absent')
+                db.session.add(absent)
+                
+    db.session.commit()
+    return jsonify({"message": "Daily absent hook completed", "date": str(today)})
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -33,6 +33,16 @@
             <div class="form-group">
                 <input type="number" name="semester" class="form-control" placeholder="Semester (e.g. 1)">
             </div>
+            {% if current_user.role == 'Admin' %}
+            <div class="form-group">
+                <select name="teacher_id" class="form-control">
+                    <option value="">-- Assign Designated Teacher --</option>
+                    {% for t in teachers %}
+                    <option value="{{ t.id }}">{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
             <div class="form-group" style="grid-column: 1 / -1; display: flex; justify-content: flex-end;">
                 <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Save Student</button>
             </div>
@@ -41,7 +51,7 @@
     
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;">
         {% for student in students %}
-        <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; transition: var(--transition); background: white;" onmouseover="this.style.boxShadow='var(--shadow-md)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.boxShadow='none'; this.style.transform='none';">
+        <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; transition: var(--transition); background: var(--bg-color);" onmouseover="this.style.boxShadow='var(--shadow-md)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.boxShadow='none'; this.style.transform='none';">
             <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
                 <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color) 0%, #3b82f6 100%); color: white; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; font-weight: bold;">
                     {{ student.name[0] }}
@@ -56,6 +66,9 @@
                 <div><i class="fa-solid fa-envelope" style="width: 20px; text-align: center;"></i> {{ student.email }}</div>
                 <div><i class="fa-solid fa-phone" style="width: 20px; text-align: center;"></i> {{ student.phone }}</div>
                 <div><i class="fa-solid fa-building" style="width: 20px; text-align: center;"></i> {{ student.department }} (Sem {{ student.semester }})</div>
+                {% if student.teacher %}
+                <div><i class="fa-solid fa-user-tie" style="width: 20px; text-align: center;"></i> {{ student.teacher.name }}</div>
+                {% endif %}
             </div>
         </div>
         {% else %}

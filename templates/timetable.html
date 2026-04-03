@@ -6,35 +6,88 @@
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
         <h3><i class="fa-solid fa-calendar-week" style="color: var(--primary-color);"></i> Weekly Timetable</h3>
-        <span style="font-size: 0.9rem; color: var(--text-muted);"><i class="fa-solid fa-circle-info"></i> Workload Optimized</span>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <span style="font-size: 0.9rem; color: var(--text-muted);"><i class="fa-solid fa-circle-info"></i> Workload Optimized</span>
+            {% if current_user.role == 'Admin' %}
+            <button class="btn btn-primary" onclick="document.getElementById('addTimetableForm').style.display='block'"><i class="fa-solid fa-plus" style="margin-right: 8px;"></i> Add Class</button>
+            {% endif %}
+        </div>
     </div>
+
+    {% if current_user.role == 'Admin' %}
+    <div id="addTimetableForm" class="card" style="display: none; margin-bottom: 24px; border-left: 4px solid var(--primary-color);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h4 style="margin: 0;">Add New Class to Timetable</h4>
+            <button onclick="document.getElementById('addTimetableForm').style.display='none'" style="background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--text-muted);"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <form action="{{ url_for('add_timetable') }}" method="POST" style="margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <div class="form-group">
+                <select name="subject_id" class="form-control" required>
+                    <option value="">-- Select Subject --</option>
+                    {% for subject in subjects %}
+                    <option value="{{ subject.id }}">{{ subject.name }} ({{ subject.code }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <select name="day" class="form-control" required>
+                    <option value="">-- Select Day --</option>
+                    <option value="Monday">Monday</option>
+                    <option value="Tuesday">Tuesday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option>
+                    <option value="Friday">Friday</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <input type="time" name="start_time" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <input type="time" name="end_time" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <input type="text" name="room" class="form-control" placeholder="Room/Lab (e.g. Room 101)" required>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1; display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Save Class</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
 
     <!-- Grouping by days -->
     <div style="display: grid; gap: 20px;">
         {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] %}
         {% for day in days %}
         <div style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
-            <div style="background-color: #f8fafc; padding: 12px 20px; border-bottom: 1px solid var(--border-color); font-weight: 600; color: var(--text-main);">
+            <div
+                style="background-color: var(--card-bg); padding: 12px 20px; border-bottom: 1px solid var(--border-color); font-weight: 600; color: var(--text-main);">
                 {{ day }}
             </div>
             <div style="padding: 16px;">
                 {% set day_classes = schedule|selectattr("day", "equalto", day)|list %}
                 {% if day_classes %}
-                    <div style="display: flex; flex-direction: column; gap: 12px;">
-                        {% for item in day_classes %}
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: white; border-left: 4px solid var(--primary-color); border-radius: 4px; box-shadow: var(--shadow-sm);">
-                            <div>
-                                <h4 style="margin: 0; color: var(--text-main); font-size: 1rem;">{{ item.subject.name }} ({{ item.subject.code }})</h4>
-                                <span style="font-size: 0.85rem; color: var(--text-muted);"><i class="fa-solid fa-location-dot"></i> {{ item.room }}</span>
-                            </div>
-                            <div style="font-weight: 600; color: var(--text-main); background: #f1f5f9; padding: 4px 12px; border-radius: 16px; font-size: 0.9rem;">
-                                <i class="fa-regular fa-clock" style="margin-right: 4px;"></i> {{ item.start_time }} - {{ item.end_time }}
-                            </div>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    {% for item in day_classes %}
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--bg-color); border-left: 4px solid var(--primary-color); border-radius: 4px; box-shadow: var(--shadow-sm);">
+                        <div>
+                            <h4 style="margin: 0; color: var(--text-main); font-size: 1rem;">{{ item.subject.name }} ({{
+                                item.subject.code }})</h4>
+                            <span style="font-size: 0.85rem; color: var(--text-muted);"><i
+                                    class="fa-solid fa-location-dot"></i> {{ item.room }}</span>
                         </div>
-                        {% endfor %}
+                        <div
+                            style="font-weight: 600; color: var(--text-main); background: var(--card-bg); padding: 4px 12px; border-radius: 16px; font-size: 0.9rem;">
+                            <i class="fa-regular fa-clock" style="margin-right: 4px;"></i> {{ item.start_time }} - {{
+                            item.end_time }}
+                        </div>
                     </div>
+                    {% endfor %}
+                </div>
                 {% else %}
-                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; font-style: italic;">No classes scheduled for {{ day }}.</p>
+                <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; font-style: italic;">No classes
+                    scheduled for {{ day }}.</p>
                 {% endif %}
             </div>
         </div>

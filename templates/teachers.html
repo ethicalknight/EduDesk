@@ -24,6 +24,9 @@
             <div class="form-group">
                 <input type="password" name="password" class="form-control" placeholder="Temporary Password" required>
             </div>
+            <div class="form-group">
+                <input type="text" name="subject_name" class="form-control" placeholder="Assign Course Name (Type to create/assign)">
+            </div>
             <div class="form-group" style="grid-column: 1 / -1; display: flex; justify-content: flex-end;">
                 <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, var(--secondary-color) 0%, #059669 100%);"><i class="fa-solid fa-save"></i> Save Teacher</button>
             </div>
@@ -45,6 +48,9 @@
             
             <div style="font-size: 0.9rem; color: var(--text-muted); display: grid; gap: 8px;">
                 <div><i class="fa-solid fa-envelope" style="width: 20px; text-align: center;"></i> {{ teacher.email }}</div>
+                {% if teacher.subject %}
+                <div><i class="fa-solid fa-book" style="width: 20px; text-align: center;"></i> {{ teacher.subject.name }}</div>
+                {% endif %}
             </div>
         </div>
         {% else %}
