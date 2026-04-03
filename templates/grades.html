@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Grades{% endblock %}
+{% block page_title %}Digital Grading{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom: 24px;">
+    <h3><i class="fa-solid fa-plus-circle" style="color: var(--primary-color);"></i> Add Student Grade</h3>
+    <form method="POST" action="{{ url_for('grades') }}"
+        style="margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+        <div class="form-group">
+            <label for="student_id">Student</label>
+            <select name="student_id" id="student_id" class="form-control" required>
+                <option value="">-- Select Student --</option>
+                {% for student in students %}
+                <option value="{{ student.id }}">{{ student.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="subject_id">Subject</label>
+            <select name="subject_id" id="subject_id" class="form-control" required>
+                <option value="">-- Select Subject --</option>
+                {% for subject in subjects %}
+                <option value="{{ subject.id }}">{{ subject.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="assessment">Assessment</label>
+            <input type="text" name="assessment" id="assessment" class="form-control" placeholder="e.g., Midterm"
+                required>
+        </div>
+        <div class="form-group">
+            <label for="score">Score Obtained</label>
+            <input type="number" step="0.1" name="score" id="score" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="max_score">Max Score</label>
+            <input type="number" step="0.1" name="max_score" id="max_score" class="form-control" value="100" required>
+        </div>
+        <div class="form-group" style="display: flex; align-items: flex-end;">
+            <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px;"><i class="fa-solid fa-save"
+                    style="margin-right: 8px;"></i> Save Grade</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h3><i class="fa-solid fa-chart-bar" style="color: var(--secondary-color);"></i> Grade Records</h3>
+    <table class="styled-table">
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Subject</th>
+                <th>Assessment</th>
+                <th>Score</th>
+                <th>Percentage</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for grade in grades %}
+            <tr>
+                <td>{{ grade.student.name }} <span style="color: var(--text-muted); font-size: 0.85em;">({{
+                        grade.student.roll_number }})</span></td>
+                <td>{{ grade.subject.name }}</td>
+                <td>{{ grade.assessment }}</td>
+                <td><strong>{{ grade.score }}</strong> / {{ grade.max_score }}</td>
+                <td>
+                    {% set percentage = (grade.score / grade.max_score) * 100 %}
+                    <span class="grade-badge {% if percentage >= 80 %}grade-high{% elif percentage >= 60 %}grade-medium{% else %}grade-low{% endif %}">
+                        {{ "%.1f"|format(percentage) }}%
+                    </span>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="text-align:center; color: var(--text-muted);">No grade records available.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

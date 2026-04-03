@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Students{% endblock %}
+{% block page_title %}Student Directory{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h3><i class="fa-solid fa-users-viewfinder" style="color: var(--primary-color);"></i> Enrolled Students</h3>
+        <button class="btn btn-primary" onclick="alert('Feature to add new student coming soon!')"><i class="fa-solid fa-user-plus" style="margin-right: 8px;"></i> Add Student</button>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;">
+        {% for student in students %}
+        <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; transition: var(--transition); background: white;" onmouseover="this.style.boxShadow='var(--shadow-md)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.boxShadow='none'; this.style.transform='none';">
+            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color) 0%, #3b82f6 100%); color: white; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; font-weight: bold;">
+                    {{ student.name[0] }}
+                </div>
+                <div>
+                    <h4 style="margin: 0; font-size: 1.1rem; color: var(--text-main);">{{ student.name }}</h4>
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Roll No: {{ student.roll_number }}</p>
+                </div>
+            </div>
+            
+            <div style="font-size: 0.9rem; color: var(--text-muted); display: grid; gap: 8px;">
+                <div><i class="fa-solid fa-envelope" style="width: 20px; text-align: center;"></i> {{ student.email }}</div>
+                <div><i class="fa-solid fa-phone" style="width: 20px; text-align: center;"></i> {{ student.phone }}</div>
+                <div><i class="fa-solid fa-building" style="width: 20px; text-align: center;"></i> {{ student.department }} (Sem {{ student.semester }})</div>
+            </div>
+        </div>
+        {% else %}
+        <p style="color: var(--text-muted); grid-column: 1 / -1; text-align: center;">No students found in the database.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

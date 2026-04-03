@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Overview Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background-color: rgba(79, 70, 229, 0.1); color: #4F46E5;">
+            <i class="fa-solid fa-users"></i>
+        </div>
+        <div class="stat-details">
+            <h3>Total Students</h3>
+            <p>{{ total_students }}</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: #10B981;">
+            <i class="fa-solid fa-book"></i>
+        </div>
+        <div class="stat-details">
+            <h3>Subjects Taught</h3>
+            <p>{{ total_subjects }}</p>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+            <i class="fa-solid fa-clipboard-check"></i>
+        </div>
+        <div class="stat-details">
+            <h3>Avg Attendance</h3>
+            <p>{{ attendance_percentage }}%</p>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 24px;">
+    <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-chart-line" style="color: var(--primary-color);"></i> Academic Performance Analytics</h3>
+    <canvas id="performanceChart" height="80"></canvas>
+</div>
+
+<div class="card">
+    <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-clock-rotate-left" style="color: var(--secondary-color);"></i> Recent Attendance Logs</h3>
+    <table class="styled-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Student</th>
+                <th>Subject</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in recent_attendance %}
+            <tr>
+                <td>{{ log.date.strftime('%Y-%m-%d') }}</td>
+                <td>{{ log.student.name }}</td>
+                <td>{{ log.subject.name }}</td>
+                <td>
+                    {% if log.status == 'Present' %}
+                    <span style="color: #10B981; font-weight: 600; padding: 4px 8px; background: #d1fae5; border-radius: 4px; font-size: 0.85rem;"><i class="fa-solid fa-check"></i> Present</span>
+                    {% else %}
+                    <span style="color: #ef4444; font-weight: 600; padding: 4px 8px; background: #fee2e2; border-radius: 4px; font-size: 0.85rem;"><i class="fa-solid fa-xmark"></i> Absent</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" style="text-align:center; color: var(--text-muted);">No recent attendance records found. Start marking attendance!</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const ctx = document.getElementById('performanceChart').getContext('2d');
+    const performanceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Assessment 1', 'Assessment 2', 'Midterm', 'Assessment 3', 'Finals (Proj)'],
+            datasets: [{
+                label: 'Average Class Score (%)',
+                data: [72, 76, 82, 80, 88],
+                borderColor: '#4F46E5',
+                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: '#4F46E5',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true, max: 100 }
+            }
+        }
+    });
+</script>
+{% endblock %}

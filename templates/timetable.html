@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Timetable{% endblock %}
+{% block page_title %}Class Schedule{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h3><i class="fa-solid fa-calendar-week" style="color: var(--primary-color);"></i> Weekly Timetable</h3>
+        <span style="font-size: 0.9rem; color: var(--text-muted);"><i class="fa-solid fa-circle-info"></i> Workload Optimized</span>
+    </div>
+
+    <!-- Grouping by days -->
+    <div style="display: grid; gap: 20px;">
+        {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] %}
+        {% for day in days %}
+        <div style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+            <div style="background-color: #f8fafc; padding: 12px 20px; border-bottom: 1px solid var(--border-color); font-weight: 600; color: var(--text-main);">
+                {{ day }}
+            </div>
+            <div style="padding: 16px;">
+                {% set day_classes = schedule|selectattr("day", "equalto", day)|list %}
+                {% if day_classes %}
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        {% for item in day_classes %}
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: white; border-left: 4px solid var(--primary-color); border-radius: 4px; box-shadow: var(--shadow-sm);">
+                            <div>
+                                <h4 style="margin: 0; color: var(--text-main); font-size: 1rem;">{{ item.subject.name }} ({{ item.subject.code }})</h4>
+                                <span style="font-size: 0.85rem; color: var(--text-muted);"><i class="fa-solid fa-location-dot"></i> {{ item.room }}</span>
+                            </div>
+                            <div style="font-weight: 600; color: var(--text-main); background: #f1f5f9; padding: 4px 12px; border-radius: 16px; font-size: 0.9rem;">
+                                <i class="fa-regular fa-clock" style="margin-right: 4px;"></i> {{ item.start_time }} - {{ item.end_time }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; font-style: italic;">No classes scheduled for {{ day }}.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
