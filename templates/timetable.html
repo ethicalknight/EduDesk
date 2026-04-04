@@ -69,8 +69,7 @@
                 {% if day_classes %}
                 <div style="display: flex; flex-direction: column; gap: 12px;">
                     {% for item in day_classes %}
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--bg-color); border-left: 4px solid var(--primary-color); border-radius: 4px; box-shadow: var(--shadow-sm);">
+                    <a href="{{ url_for('attendance', subject_id=item.subject.id) }}" class="timetable-card">
                         <div>
                             <h4 style="margin: 0; color: var(--text-main); font-size: 1rem;">{{ item.subject.name }} ({{
                                 item.subject.code }})</h4>
@@ -82,10 +81,10 @@
                             <i class="fa-regular fa-clock" style="margin-right: 4px;"></i> {{ item.start_time }} - {{
                             item.end_time }}
                         </div>
-                    </div>
+                    </a>
                     {% endfor %}
                 </div>
-                {% else %}
+{% else %}
                 <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; font-style: italic;">No classes
                     scheduled for {{ day }}.</p>
                 {% endif %}
@@ -94,4 +93,25 @@
         {% endfor %}
     </div>
 </div>
+
+<style>
+.timetable-card {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 12px; 
+    background: var(--bg-color); 
+    border-left: 4px solid var(--primary-color); 
+    border-radius: 4px; 
+    box-shadow: var(--shadow-sm);
+    text-decoration: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+.timetable-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    background: rgba(var(--primary-rgb), 0.05);
+}
+</style>
 {% endblock %}

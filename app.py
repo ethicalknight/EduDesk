@@ -4,7 +4,7 @@ from io import StringIO
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import db, User, Student, Subject, Attendance, Grade, Timetable
+from models import db, User, Student, Subject, Attendance, Grade, Timetable, Announcement
 from datetime import datetime
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
 
@@ -79,6 +79,14 @@ def create_dummy_data():
         db.session.add_all([g1, g2])
         db.session.commit()
 
+    if Announcement.query.first() is None:
+        admin = User.query.filter_by(role="Admin").first()
+        if admin:
+            a1 = Announcement(title="Welcome to EduDesk", content="The new smart academic administration system is now live!", author_id=admin.id)
+            a2 = Announcement(title="Holiday Notice", content="Campus will remain closed this Friday for the Spring Festival.", author_id=admin.id)
+            db.session.add_all([a1, a2])
+            db.session.commit()
+
 with app.app_context():
     db.create_all()
     create_dummy_data()
@@ -150,10 +158,21 @@ def dashboard():
             st_present = Attendance.query.filter_by(student_id=st.id, status='Present').count()
             perc = (st_present / st_total) * 100
             if perc < 75:
-                at_risk_students.append({'name': st.name, 'roll': st.roll_number, 'percentage': int(perc)})
+                # Add Success Probability (simple version for dashboard)
+                grades = Grade.query.filter_by(student_id=st.id).all()
+                avg_grade = sum([g.score/g.max_score for g in grades]) / len(grades) if grades else 0
+                success_prob = int((perc/100 * 40) + (avg_grade * 60))
+                at_risk_students.append({
+                    'name': st.name, 
+                    'roll': st.roll_number, 
+                    'percentage': int(perc), 
+                    'success_prob': success_prob
+                })
     at_risk_students = sorted(at_risk_students, key=lambda x: x['percentage'])[:5]
     
     recent_attendance = Attendance.query.order_by(Attendance.date.desc()).limit(5).all()
+    
+    announcements = Announcement.query.order_by(Announcement.date.desc()).limit(3).all()
     
     return render_template('dashboard.html', 
                            total_students=total_students, 
@@ -164,7 +183,8 @@ def dashboard():
                            absent_records=absent_records,
                            date_labels=date_labels,
                            trend_data=trend_data,
-                           at_risk_students=at_risk_students)
+                           at_risk_students=at_risk_students,
+                           announcements=announcements)
 
 @app.route('/attendance', methods=['GET', 'POST'])
 @login_required
@@ -433,6 +453,31 @@ def daily_absent_hook():
     db.session.commit()
     return jsonify({"message": "Daily absent hook completed", "date": str(today)})
 
+@app.route('/admin/trigger_absent_hook', methods=['POST'])
+@login_required
+def trigger_absent_hook():
+    if current_user.role != 'Admin':
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    # Reuse the logic from daily_absent_hook
+    today = datetime.utcnow().date()
+    students = Student.query.all()
+    active_subjects_today = db.session.query(Attendance.subject_id).filter_by(date=today).distinct().all()
+    active_subject_ids = [s[0] for s in active_subjects_today]
+
+    count = 0
+    for subject_id in active_subject_ids:
+        for student in students:
+            att = Attendance.query.filter_by(student_id=student.id, subject_id=subject_id, date=today).first()
+            if not att:
+                absent = Attendance(student_id=student.id, subject_id=subject_id, date=today, status='Absent')
+                db.session.add(absent)
+                count += 1
+                
+    db.session.commit()
+    flash(f"Success: Processed {count} students as absent for today.", "success")
+    return redirect(url_for('dashboard'))
+
 @app.route('/reports')
 @login_required
 def reports():
@@ -451,12 +496,32 @@ def reports():
             absent_days = Attendance.query.filter_by(student_id=student_id, status='Absent').count()
             student_grades = Grade.query.filter_by(student_id=student_id).all()
             
+            # Success Probability & Badges (Winning Feature)
+            total_days = present_days + absent_days
+            att_rate = (present_days / total_days) if total_days > 0 else 0
+            
+            avg_grade = 0
+            if student_grades:
+                avg_grade = sum([g.score/g.max_score for g in student_grades]) / len(student_grades)
+            
+            # Simple weighted probability: 40% Attendance + 60% Grades
+            success_prob = (att_rate * 40) + (avg_grade * 60)
+            selected_student.success_probability = round(success_prob, 1)
+            
+            badges = []
+            if att_rate >= 0.95: badges.append({'name': 'Attendance Pro', 'icon': 'fa-calendar-check', 'color': '#10B981'})
+            if avg_grade >= 0.85: badges.append({'name': 'High Flyer', 'icon': 'fa-rocket', 'color': '#4F46E5'})
+            if present_days > 20: badges.append({'name': 'Consistent', 'icon': 'fa-medal', 'color': '#F59E0B'})
+            
+            selected_student.badges = badges
+            
     return render_template('reports.html', 
                            students=students, 
                            selected_student=selected_student,
                            present_days=present_days,
                            absent_days=absent_days,
-                           student_grades=student_grades)
+                           student_grades=student_grades,
+                           today=datetime.utcnow().date())
 
 @app.route('/analytics')
 @login_required
@@ -478,6 +543,65 @@ def analytics():
                            trend_data=trend_data,
                            total_present=total_present,
                            total_absent=total_absent)
+
+@app.route('/api/recent_checkins/<int:subject_id>')
+@login_required
+def api_recent_checkins(subject_id):
+    today = datetime.utcnow().date()
+    # Get the 10 most recent "Present" records for today
+    checkins = Attendance.query.filter_by(subject_id=subject_id, date=today, status='Present').order_by(Attendance.id.desc()).limit(10).all()
+    return jsonify({
+        'count': Attendance.query.filter_by(subject_id=subject_id, date=today, status='Present').count(),
+        'recent': [{'name': c.student.name, 'roll': c.student.roll_number, 'time': 'Just now'} for c in checkins]
+    })
+
+@app.route('/api/search')
+@login_required
+def api_search():
+    q = request.args.get('q', '').lower()
+    if not q:
+        return jsonify({'results': []})
+    
+    results = []
+    
+    # Search Students
+    students = Student.query.filter(
+        (Student.name.ilike(f'%{q}%')) | (Student.roll_number.ilike(f'%{q}%'))
+    ).limit(5).all()
+    for s in students:
+        results.append({'type': 'Student', 'title': s.name, 'subtitle': s.roll_number, 'url': url_for('reports', student_id=s.id)})
+        
+    # Search Subjects
+    subjects = Subject.query.filter(
+        (Subject.name.ilike(f'%{q}%')) | (Subject.code.ilike(f'%{q}%'))
+    ).limit(3).all()
+    for sub in subjects:
+        results.append({'type': 'Subject', 'title': sub.name, 'subtitle': sub.code, 'url': url_for('attendance', subject_id=sub.id)})
+        
+    return jsonify({'results': results})
+
+@app.route('/api/performance_correlation')
+@login_required
+def api_performance_correlation():
+    # Calculate Attendance % vs Average Grade for each student
+    students = Student.query.all()
+    data = []
+    for s in students:
+        total_att = Attendance.query.filter_by(student_id=s.id).count()
+        if total_att == 0: continue
+        present_att = Attendance.query.filter_by(student_id=s.id, status='Present').count()
+        att_perc = (present_att / total_att) * 100
+        
+        grades = Grade.query.filter_by(student_id=s.id).all()
+        if not grades: continue
+        avg_grade = sum([g.score/g.max_score for g in grades]) / len(grades) * 100
+        
+        data.append({
+            'name': s.name,
+            'x': round(att_perc, 1),
+            'y': round(avg_grade, 1)
+        })
+    return jsonify(data)
 
 @app.route('/export/attendance')
 @login_required

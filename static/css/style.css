@@ -25,6 +25,16 @@
     --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
+/* Page Entry Animation */
+@keyframes pageFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.content-wrapper {
+    animation: pageFadeIn 0.5s ease-out forwards;
+}
+
 :root.dark-mode {
     --primary-color: #818cf8; /* Indigo 400 */
     --primary-hover: #6366f1; /* Indigo 500 */
@@ -567,5 +577,49 @@ table.styled-table tbody tr:hover {
     /* Stack form grids vertically on mobile */
     form[style*="grid-template-columns"] {
         grid-template-columns: 1fr !important;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .sidebar, .topbar, .no-print, .btn, .flash-messages, .command-palette-overlay {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+    
+    .content-wrapper {
+        padding: 0 !important;
+    }
+    
+    .card {
+        box-shadow: none !important;
+        border: none !important;
+        background: white !important;
+        padding: 0 !important;
+    }
+    
+    .print-only {
+        display: block !important;
+    }
+    
+    body {
+        background: white !important;
+        color: black !important;
+    }
+    
+    table.styled-table {
+        box-shadow: none !important;
+        border: 1px solid #eee !important;
+    }
+    
+    table.styled-table th {
+        background-color: #f1f1f1 !important;
+        color: black !important;
+        print-color-adjust: exact;
     }
 }

@@ -66,3 +66,12 @@ class Timetable(db.Model):
     start_time = db.Column(db.String(5), nullable=False) # e.g., '09:00'
     end_time = db.Column(db.String(5), nullable=False)   # e.g., '10:30'
     room = db.Column(db.String(50), nullable=False)
+
+class Announcement(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    author = db.relationship('User', backref='announcements')

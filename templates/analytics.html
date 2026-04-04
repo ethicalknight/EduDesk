@@ -18,6 +18,14 @@
         <canvas id="proportionChart" height="100"></canvas>
     </div>
 </div>
+
+<div class="card" style="margin-bottom: 24px;">
+    <h3 style="margin-bottom: 8px;"><i class="fa-solid fa-microscope" style="color: var(--primary-color);"></i> Performance Correlation</h3>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Analysis of how physical presence impacts academic grades across all students.</p>
+    <div style="height: 350px;">
+        <canvas id="correlationChart"></canvas>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -71,5 +79,60 @@
             }
         }
     });
+
+    // Correlation Scatter Plot
+    (async function() {
+        try {
+            const response = await fetch('/api/performance_correlation');
+            const correlationData = await response.json();
+            
+            const scatterCtx = document.getElementById('correlationChart').getContext('2d');
+            new Chart(scatterCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Student Performance',
+                        data: correlationData,
+                        backgroundColor: 'rgba(79, 70, 229, 0.6)',
+                        borderColor: '#4F46E5',
+                        borderWidth: 1,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const point = context.raw;
+                                    return `${point.name}: ${point.x}% Attendance, ${point.y}% Grade`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Attendance (%)', color: 'var(--text-main)' },
+                            suggestedMin: 0, suggestedMax: 100,
+                            grid: { color: 'rgba(var(--primary-rgb), 0.1)' },
+                            ticks: { color: 'var(--text-muted)' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Average Grade (%)', color: 'var(--text-main)' },
+                            suggestedMin: 0, suggestedMax: 100,
+                            grid: { color: 'rgba(var(--primary-rgb), 0.1)' },
+                            ticks: { color: 'var(--text-muted)' }
+                        }
+                    }
+                }
+            });
+        } catch (e) {
+            console.error("Correlation chart error:", e);
+        }
+    })();
 </script>
 {% endblock %}

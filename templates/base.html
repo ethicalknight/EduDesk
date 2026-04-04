@@ -22,6 +22,10 @@
             document.documentElement.classList.add('dark-mode');
         }
     </script>
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#4F46E5">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icon-192.png') }}">
 </head>
 
 <body>
@@ -146,6 +150,63 @@
         </main>
     </div>
 
+    <!-- Global Command Palette -->
+    <div id="commandPalette" class="command-palette-overlay" style="display: none;">
+        <div class="command-palette-modal">
+            <div class="command-palette-header">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="commandInput" placeholder="Search for students, subjects, or actions..." autocomplete="off">
+                <span class="esc-badge">ESC</span>
+            </div>
+            <div id="commandResults" class="command-palette-results">
+                <!-- Search results will appear here -->
+                <div class="command-placeholder">Type to search... (Ctrl + K)</div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .command-palette-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px);
+            z-index: 9999; display: flex; justify-content: center; padding-top: 100px;
+        }
+        .command-palette-modal {
+            width: 600px; max-width: 90%; background: var(--card-bg);
+            border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color); overflow: hidden;
+            animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .command-palette-header {
+            display: flex; align-items: center; padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color); gap: 16px;
+        }
+        .command-palette-header i { color: var(--primary-color); font-size: 1.2rem; }
+        .command-palette-header input {
+            flex: 1; background: transparent; border: none; font-size: 1.1rem;
+            color: var(--text-main); outline: none;
+        }
+        .esc-badge {
+            font-size: 0.7rem; color: var(--text-muted); background: var(--border-color);
+            padding: 2px 6px; border-radius: 4px; font-weight: 600;
+        }
+        .command-palette-results { max-height: 400px; overflow-y: auto; padding: 12px; }
+        .command-result-item {
+            display: flex; align-items: center; gap: 16px; padding: 12px 16px;
+            border-radius: 12px; cursor: pointer; transition: all 0.2s;
+            text-decoration: none; color: var(--text-main);
+        }
+        .command-result-item:hover, .command-result-item.selected {
+            background: var(--primary-color); color: white;
+        }
+        .command-result-item:hover .subtitle, .command-result-item.selected .subtitle { color: rgba(255,255,255,0.8); }
+        .command-result-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: rgba(var(--primary-rgb), 0.1); border-radius: 8px; }
+        .command-result-item:hover .command-result-icon { background: rgba(255,255,255,0.2); }
+        .command-placeholder { text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 0.95rem; }
+    </style>
+
     {% block scripts %}{% endblock %}
     <script>
         document.getElementById('themeToggle').addEventListener('click', () => {
@@ -180,6 +241,80 @@
                 sidebar.classList.toggle('collapsed');
             });
         }
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}")
+                    .then(reg => console.log('SW Registered'))
+                    .catch(e => console.log('SW Error', e));
+            });
+        }
+
+        // Global Command Palette Logic
+        const commandPalette = document.getElementById('commandPalette');
+        const commandInput = document.getElementById('commandInput');
+        const commandResults = document.getElementById('commandResults');
+
+        function toggleCommandPalette(show) {
+            commandPalette.style.display = show ? 'flex' : 'none';
+            if (show) {
+                commandInput.value = '';
+                commandInput.focus();
+                renderPlaceholder();
+            }
+        }
+
+        function renderPlaceholder() {
+            commandResults.innerHTML = '<div class="command-placeholder">Type to search students or subjects... (Ctrl + K)</div>';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                toggleCommandPalette(commandPalette.style.display === 'none');
+            }
+            if (e.key === 'Escape') toggleCommandPalette(false);
+        });
+
+        commandPalette.addEventListener('click', (e) => {
+            if (e.target === commandPalette) toggleCommandPalette(false);
+        });
+
+        let searchTimeout = null;
+        commandInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            const query = commandInput.value.trim();
+            if (query.length < 2) {
+                renderPlaceholder();
+                return;
+            }
+
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                    const data = await response.json();
+                    
+                    if (data.results.length === 0) {
+                        commandResults.innerHTML = '<div class="command-placeholder">No results found for "' + query + '"</div>';
+                        return;
+                    }
+
+                    commandResults.innerHTML = data.results.map(res => `
+                        <a href="${res.url}" class="command-result-item">
+                            <div class="command-result-icon">
+                                <i class="fa-solid ${res.type === 'Student' ? 'fa-user' : 'fa-book'}"></i>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600;">${res.title}</div>
+                                <div class="subtitle" style="font-size: 0.8rem; color: var(--text-muted);">${res.type}: ${res.subtitle}</div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right" style="font-size: 0.8rem; opacity: 0.5;"></i>
+                        </a>
+                    `).join('');
+                } catch (e) { console.error("Search error", e); }
+            }, 300);
+        });
     </script>
 </body>
 
