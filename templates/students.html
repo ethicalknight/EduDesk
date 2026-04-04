@@ -4,9 +4,18 @@
 
 {% block content %}
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-        <h3><i class="fa-solid fa-users-viewfinder" style="color: var(--primary-color);"></i> Enrolled Students</h3>
-        <button class="btn btn-primary" onclick="document.getElementById('addStudentForm').style.display='block'"><i class="fa-solid fa-user-plus" style="margin-right: 8px;"></i> Add Student</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 16px; flex-wrap: wrap;">
+        <h3 style="margin: 0;"><i class="fa-solid fa-users-viewfinder" style="color: var(--primary-color);"></i> Student Directory</h3>
+        <div style="display: flex; gap: 12px; flex: 1; min-width: 300px;">
+            <input type="text" id="directorySearch" class="form-control" placeholder="Search by name or roll number..." style="flex: 2;">
+            <select id="deptFilter" class="form-control" style="flex: 1;">
+                <option value="">All Departments</option>
+                <option value="Computer Science">Computer Science</option>
+                <option value="Information Technology">Information Technology</option>
+                <option value="Electrical">Electrical</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" onclick="document.getElementById('addStudentForm').style.display='block'"><i class="fa-solid fa-user-plus"></i> Add Student</button>
     </div>
     
     <div id="addStudentForm" class="card" style="display: none; margin-bottom: 24px; border-left: 4px solid var(--primary-color);">
@@ -49,31 +58,97 @@
         </form>
     </div>
     
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;">
+    <div id="studentGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px;">
         {% for student in students %}
-        <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; transition: var(--transition); background: var(--bg-color);" onmouseover="this.style.boxShadow='var(--shadow-md)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.boxShadow='none'; this.style.transform='none';">
+        <div class="glass-card student-card" data-name="{{ student.name|lower }}" data-roll="{{ student.roll_number|lower }}" data-dept="{{ student.department }}">
             <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
-                <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color) 0%, #3b82f6 100%); color: white; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; font-weight: bold;">
+                <div class="avatar" style="width: 50px; height: 50px; background: var(--primary-color); font-size: 1.2rem;">
                     {{ student.name[0] }}
                 </div>
-                <div>
+                <div style="flex: 1;">
                     <h4 style="margin: 0; font-size: 1.1rem; color: var(--text-main);">{{ student.name }}</h4>
-                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Roll No: {{ student.roll_number }}</p>
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.85rem;">Roll: {{ student.roll_number }}</p>
                 </div>
+                {% if student.user_id %}
+                <span class="badge" title="Has Login Account" style="background: rgba(16, 185, 129, 0.1); color: #10B981; padding: 4px 8px;"><i class="fa-solid fa-key"></i></span>
+                {% endif %}
             </div>
             
-            <div style="font-size: 0.9rem; color: var(--text-muted); display: grid; gap: 8px;">
-                <div><i class="fa-solid fa-envelope" style="width: 20px; text-align: center;"></i> {{ student.email }}</div>
-                <div><i class="fa-solid fa-phone" style="width: 20px; text-align: center;"></i> {{ student.phone }}</div>
-                <div><i class="fa-solid fa-building" style="width: 20px; text-align: center;"></i> {{ student.department }} (Sem {{ student.semester }})</div>
-                {% if student.teacher %}
-                <div><i class="fa-solid fa-user-tie" style="width: 20px; text-align: center;"></i> {{ student.teacher.name }}</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); display: grid; gap: 10px; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 10px;"><i class="fa-solid fa-envelope" style="width: 16px; opacity: 0.6;"></i> {{ student.email or 'No Email' }}</div>
+                <div style="display: flex; align-items: center; gap: 10px;"><i class="fa-solid fa-phone" style="width: 16px; opacity: 0.6;"></i> {{ student.phone or 'No Phone' }}</div>
+                <div style="display: flex; align-items: center; gap: 10px;"><i class="fa-solid fa-building" style="width: 16px; opacity: 0.6;"></i> {{ student.department }} (Sem {{ student.semester }})</div>
+            </div>
+
+            <div style="display: flex; gap: 8px; border-top: 1px solid var(--border-color); pt: 16px; margin-top: 16px; padding-top: 16px;">
+                <a href="{{ url_for('reports', student_id=student.id) }}" class="btn btn-secondary btn-small" style="flex: 1; text-align: center;"><i class="fa-solid fa-chart-simple"></i> Report</a>
+                
+                {% if current_user.role == 'Admin' %}
+                    {% if not student.user_id %}
+                    <button class="btn btn-primary btn-small" style="flex: 1;" onclick="openLoginModal({{ student.id }}, '{{ student.name }}')"><i class="fa-solid fa-user-shield"></i> Activate Login</button>
+                    {% else %}
+                    <button class="btn btn-secondary btn-small" style="flex: 1;"><i class="fa-solid fa-user-pen"></i> Edit</button>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>
         {% else %}
-        <p style="color: var(--text-muted); grid-column: 1 / -1; text-align: center;">No students found in the database.</p>
+        <p style="color: var(--text-muted); grid-column: 1 / -1; text-align: center; padding: 40px;">No students found in the database.</p>
         {% endfor %}
     </div>
+</div>
+
+<!-- Activate Login Modal -->
+<div id="loginModal" class="command-palette-overlay" style="display: none;">
+    <div class="glass-card" style="width: 400px; padding: 32px; border-radius: 20px; box-shadow: 0 25px 60px rgba(0,0,0,0.3);">
+        <h3 id="loginModalTitle">Activate Student Login</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">Set an initial password for this student.</p>
+        <form action="{{ url_for('create_student_login') }}" method="POST">
+            <input type="hidden" name="student_id" id="loginStudentId">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>Default Password</label>
+                <input type="password" name="password" class="form-control" placeholder="Minimum 6 characters" required minlength="6">
+            </div>
+            <div style="display: flex; gap: 12px;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="closeLoginModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Create Account</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openLoginModal(id, name) {
+    document.getElementById('loginModalTitle').innerText = 'Login for ' + name;
+    document.getElementById('loginStudentId').value = id;
+    document.getElementById('loginModal').style.display = 'flex';
+}
+function closeLoginModal() {
+    document.getElementById('loginModal').style.display = 'none';
+}
+
+const searchInput = document.getElementById('directorySearch');
+const deptFilter = document.getElementById('deptFilter');
+const studentCards = document.querySelectorAll('.student-card');
+
+function filterStudents() {
+    const query = searchInput.value.toLowerCase();
+    const dept = deptFilter.value;
+    
+    studentCards.forEach(card => {
+        const name = card.dataset.name;
+        const roll = card.dataset.roll;
+        const cardDept = card.dataset.dept;
+        
+        const matchesSearch = name.includes(query) || roll.includes(query);
+        const matchesDept = dept === "" || cardDept === dept;
+        
+        card.style.display = (matchesSearch && matchesDept) ? 'block' : 'none';
+    });
+}
+
+if (searchInput) searchInput.addEventListener('input', filterStudents);
+if (deptFilter) deptFilter.addEventListener('change', filterStudents);
+</script>
 </div>
 {% endblock %}

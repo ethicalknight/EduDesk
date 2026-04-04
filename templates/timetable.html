@@ -4,12 +4,18 @@
 
 {% block content %}
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-        <h3><i class="fa-solid fa-calendar-week" style="color: var(--primary-color);"></i> Weekly Timetable</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <h3 style="margin: 0;"><i class="fa-solid fa-calendar-week" style="color: var(--primary-color);"></i> Class Schedule</h3>
+            <div class="glass-card" style="padding: 4px; display: flex; gap: 4px; border-radius: 12px; background: rgba(var(--primary-rgb), 0.05); border: 1px solid var(--border-color);">
+                <button id="viewWeekly" class="btn btn-small active" style="padding: 6px 12px; border-radius: 8px;">Weekly</button>
+                <button id="viewDaily" class="btn btn-small" style="padding: 6px 12px; border-radius: 8px;">Daily/Events</button>
+            </div>
+        </div>
         <div style="display: flex; gap: 12px; align-items: center;">
             <span style="font-size: 0.9rem; color: var(--text-muted);"><i class="fa-solid fa-circle-info"></i> Workload Optimized</span>
             {% if current_user.role == 'Admin' %}
-            <button class="btn btn-primary" onclick="document.getElementById('addTimetableForm').style.display='block'"><i class="fa-solid fa-plus" style="margin-right: 8px;"></i> Add Class</button>
+            <button class="btn btn-primary" onclick="document.getElementById('addTimetableForm').style.display='block'"><i class="fa-solid fa-plus"></i> Add Event</button>
             {% endif %}
         </div>
     </div>
@@ -22,96 +28,162 @@
         </div>
         <form action="{{ url_for('add_timetable') }}" method="POST" style="margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
             <div class="form-group">
+                <label>Subject</label>
                 <select name="subject_id" class="form-control" required>
-                    <option value="">-- Select Subject --</option>
                     {% for subject in subjects %}
                     <option value="{{ subject.id }}">{{ subject.name }} ({{ subject.code }})</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="form-group">
-                <select name="day" class="form-control" required>
-                    <option value="">-- Select Day --</option>
+                <label>Recurring Day (Optional)</label>
+                <select name="day" class="form-control">
+                    <option value="">-- One-off Event --</option>
                     <option value="Monday">Monday</option>
                     <option value="Tuesday">Tuesday</option>
                     <option value="Wednesday">Wednesday</option>
                     <option value="Thursday">Thursday</option>
                     <option value="Friday">Friday</option>
+                    <option value="Saturday">Saturday</option>
+                    <option value="Sunday">Sunday</option>
                 </select>
             </div>
             <div class="form-group">
+                <label>Specific Date (Optional)</label>
+                <input type="date" name="date" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Start Time</label>
                 <input type="time" name="start_time" class="form-control" required>
             </div>
             <div class="form-group">
+                <label>End Time</label>
                 <input type="time" name="end_time" class="form-control" required>
             </div>
             <div class="form-group">
-                <input type="text" name="room" class="form-control" placeholder="Room/Lab (e.g. Room 101)" required>
+                <label>Room/Lab</label>
+                <input type="text" name="room" class="form-control" placeholder="Room 101" required>
             </div>
             <div class="form-group" style="grid-column: 1 / -1; display: flex; justify-content: flex-end;">
-                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Save Class</button>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Save Event</button>
             </div>
         </form>
     </div>
     {% endif %}
 
-    <!-- Grouping by days -->
-    <div style="display: grid; gap: 20px;">
-        {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] %}
+    <!-- Weekly View Container -->
+    <div id="weeklyGrid" style="display: grid; gap: 32px;">
+        {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
         {% for day in days %}
-        <div style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
-            <div
-                style="background-color: var(--card-bg); padding: 12px 20px; border-bottom: 1px solid var(--border-color); font-weight: 600; color: var(--text-main);">
-                {{ day }}
+        <div class="timetable-day-section">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                <div style="width: 8px; height: 32px; background: var(--primary-color); border-radius: 4px;"></div>
+                <h4 style="margin: 0; font-size: 1.2rem; font-weight: 700;">{{ day }}</h4>
             </div>
-            <div style="padding: 16px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
                 {% set day_classes = schedule|selectattr("day", "equalto", day)|list %}
                 {% if day_classes %}
-                <div style="display: flex; flex-direction: column; gap: 12px;">
                     {% for item in day_classes %}
-                    <a href="{{ url_for('attendance', subject_id=item.subject.id) }}" class="timetable-card">
-                        <div>
-                            <h4 style="margin: 0; color: var(--text-main); font-size: 1rem;">{{ item.subject.name }} ({{
-                                item.subject.code }})</h4>
-                            <span style="font-size: 0.85rem; color: var(--text-muted);"><i
-                                    class="fa-solid fa-location-dot"></i> {{ item.room }}</span>
+                    <div class="glass-card timetable-item-card">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--primary-color); text-transform: uppercase;">{{ item.subject.code }}</div>
+                            <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-main); background: rgba(var(--primary-rgb), 0.08); padding: 4px 8px; border-radius: 6px;">
+                                {{ item.start_time }} - {{ item.end_time }}
+                            </div>
                         </div>
-                        <div
-                            style="font-weight: 600; color: var(--text-main); background: var(--card-bg); padding: 4px 12px; border-radius: 16px; font-size: 0.9rem;">
-                            <i class="fa-regular fa-clock" style="margin-right: 4px;"></i> {{ item.start_time }} - {{
-                            item.end_time }}
+                        <h5 style="margin: 0 0 8px 0; font-size: 1rem;">{{ item.subject.name }}</h5>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-muted);">
+                            <span><i class="fa-solid fa-location-dot"></i> {{ item.room }}</span>
+                            {% if current_user.role == 'Admin' %}
+                            <div style="display: flex; gap: 8px;">
+                                <i class="fa-solid fa-ellipsis-vertical" style="cursor: pointer;"></i>
+                            </div>
+                            {% endif %}
                         </div>
-                    </a>
+                    </div>
                     {% endfor %}
-                </div>
-{% else %}
-                <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; font-style: italic;">No classes
-                    scheduled for {{ day }}.</p>
+                {% else %}
+                    <div style="font-size: 0.9rem; color: var(--text-muted); opacity: 0.6; padding: 12px;">No classes scheduled</div>
                 {% endif %}
             </div>
         </div>
         {% endfor %}
     </div>
+
+    <!-- Daily/One-off View Container (Hidden by default) -->
+    <div id="dailyGrid" style="display: none; flex-direction: column; gap: 32px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(var(--primary-rgb), 0.05); padding: 16px; border-radius: 16px; border: 1px solid var(--border-color);">
+            <div style="font-weight: 700; color: var(--text-main);">One-off Events & Special Sessions</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">View date-specific classes and lectures</div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+            {% set one_off = schedule|selectattr("date")|list %}
+            {% if one_off %}
+                {% for item in one_off %}
+                <div class="glass-card timetable-item-card" style="border-top: 3px solid #F59E0B;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #F59E0B;">Special Session</span>
+                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);">{{ item.date.strftime('%b %d, %Y') }}</div>
+                    </div>
+                    <h5 style="margin: 0 0 8px 0; font-size: 1rem;">{{ item.subject.name }}</h5>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
+                        <i class="fa-regular fa-clock"></i> {{ item.start_time }} - {{ item.end_time }}
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-muted);">
+                        <span><i class="fa-solid fa-location-dot"></i> {{ item.room }}</span>
+                        <i class="fa-solid fa-chalkboard-user"></i>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="grid-column: span 3; text-align: center; padding: 40px; color: var(--text-muted);">No upcoming one-off events found.</div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
 <style>
-.timetable-card {
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    padding: 12px; 
-    background: var(--bg-color); 
-    border-left: 4px solid var(--primary-color); 
-    border-radius: 4px; 
-    box-shadow: var(--shadow-sm);
-    text-decoration: none;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
+.timetable-item-card {
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    cursor: default;
+    background: var(--card-bg);
+    border-radius: 12px;
 }
-.timetable-card:hover {
-    transform: scale(1.02);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-    background: rgba(var(--primary-rgb), 0.05);
+.timetable-item-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    border-color: var(--primary-color);
+}
+.active-view {
+    background: var(--primary-color) !important;
+    color: white !important;
 }
 </style>
+
+<script>
+const btnWeekly = document.getElementById('viewWeekly');
+const btnDaily = document.getElementById('viewDaily');
+const gridWeekly = document.getElementById('weeklyGrid');
+const gridDaily = document.getElementById('dailyGrid');
+
+if (btnWeekly && btnDaily) {
+    btnWeekly.onclick = () => {
+        gridWeekly.style.display = 'grid';
+        gridDaily.style.display = 'none';
+        btnWeekly.classList.add('active-view');
+        btnDaily.classList.remove('active-view');
+    };
+    btnDaily.onclick = () => {
+        gridWeekly.style.display = 'none';
+        gridDaily.style.display = 'flex';
+        btnDaily.classList.add('active-view');
+        btnWeekly.classList.remove('active-view');
+    };
+    // Init
+    btnWeekly.classList.add('active-view');
+}
+</script>
 {% endblock %}

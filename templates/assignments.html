@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+{% block title %}Assignments{% endblock %}
+{% block page_title %}Assignments & Tasks{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid">
+    {% if current_user.role in ['Admin', 'Teacher'] %}
+    <!-- Post Assignment Card -->
+    <div class="glass-card" style="grid-column: span 1;">
+        <h3 style="margin-bottom: 24px;"><i class="fa-solid fa-plus-circle" style="color: var(--primary-color); margin-right: 8px;"></i>Post New Assignment</h3>
+        <form action="{{ url_for('assignments') }}" method="POST" enctype="multipart/form-data" class="form-grid" style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="form-group">
+                <label>Subject</label>
+                <select name="subject_id" class="form-control" required>
+                    {% for sub in subjects %}
+                    <option value="{{ sub.id }}">{{ sub.code }} - {{ sub.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" name="title" class="form-control" placeholder="e.g. Project Phase 1" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea name="description" class="form-control" placeholder="Assignment details..." rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Deadline</label>
+                <input type="datetime-local" name="deadline" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Reference File (Optional)</label>
+                <input type="file" name="file" class="form-control">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Post Assignment</button>
+        </form>
+    </div>
+
+    <!-- Active Assignments -->
+    <div class="glass-card" style="grid-column: span 2;">
+        <h3 style="margin-bottom: 24px;"><i class="fa-solid fa-list-check" style="color: var(--primary-color); margin-right: 8px;"></i>Active Assignments</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Title</th>
+                        <th>Deadline</th>
+                        <th>Submissions</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in assignments %}
+                    <tr>
+                        <td>{{ a.subject.code }}</td>
+                        <td style="font-weight: 600;">{{ a.title }}</td>
+                        <td style="color: #EF4444;">{{ a.deadline.strftime('%b %d, %H:%M') }}</td>
+                        <td>{{ a.submissions|length }} Submissions</td>
+                        <td>
+                            {% if a.file_path %}
+                            <a href="{{ url_for('download_file', filename=a.file_path.split('\\')[-1]) }}" class="btn btn-secondary btn-small" title="Download Ref"><i class="fa-solid fa-download"></i></a>
+                            {% endif %}
+                            <button class="btn btn-primary btn-small" onclick="viewSubmissions({{ a.id }})"><i class="fa-solid fa-eye"></i></button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if current_user.role == 'Student' %}
+    <!-- Student Assignment View -->
+    <div class="glass-card" style="grid-column: span 3;">
+        <h3 style="margin-bottom: 24px;"><i class="fa-solid fa-tasks" style="color: var(--primary-color); margin-right: 8px;"></i>Pending Tasks</h3>
+        <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+            {% for a in assignments %}
+            <div class="glass-card assignment-task-card" style="padding: 20px; border-top: 5px solid {% if a.deadline < now %}#EF4444{% else %}#10B981{% endif %};">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: var(--primary-color);">{{ a.subject.name }}</div>
+                    {% if a.deadline < now %}<span class="badge badge-error">Overdue</span>{% endif %}
+                </div>
+                <h4 style="margin: 12px 0; font-size: 1.1rem;">{{ a.title }}</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; min-height: 40px;">{{ a.description|truncate(80) }}</p>
+                
+                <div style="font-size: 0.8rem; color: #EF4444; margin-bottom: 20px; font-weight: 600;">
+                    <i class="fa-solid fa-clock"></i> Deadline: {{ a.deadline.strftime('%A, %b %d at %H:%M') }}
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    {% if a.file_path %}
+                    <a href="{{ url_for('download_file', filename=a.file_path.split('\\')[-1]) }}" class="btn btn-secondary" style="flex: 1;"><i class="fa-solid fa-download"></i> Resources</a>
+                    {% endif %}
+                    <button class="btn btn-primary" onclick="openSubmitModal({{ a.id }}, '{{ a.title }}')" style="flex: 1;"><i class="fa-solid fa-upload"></i> Submit</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Submission Modal -->
+<div id="submitModal" class="command-palette-overlay" style="display: none;">
+    <div class="glass-card" style="width: 450px; padding: 32px; border-radius: 20px; box-shadow: 0 25px 60px rgba(0,0,0,0.3);">
+        <h3 id="modalTitle">Submit Assignment</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 24px;">Upload your completed work (PDF, ZIP, or Image).</p>
+        <form id="submissionForm" method="POST" enctype="multipart/form-data">
+            <div class="form-group" style="margin-bottom: 24px;">
+                <label>Select File</label>
+                <div style="border: 2px dashed var(--border-color); padding: 30px; border-radius: 12px; text-align: center; cursor: pointer;" onclick="document.getElementById('subFile').click()">
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2rem; color: var(--primary-color); margin-bottom: 12px;"></i>
+                    <div id="fileName" style="font-size: 0.9rem;">Click to upload or drag & drop</div>
+                    <input type="file" name="file" id="subFile" style="display: none;" onchange="updateFileName(this)" required>
+                </div>
+            </div>
+            <div style="display: flex; gap: 16px;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="closeSubmitModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Submit Work</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openSubmitModal(id, title) {
+    document.getElementById('modalTitle').innerText = 'Submit: ' + title;
+    document.getElementById('submissionForm').action = '/submit_assignment/' + id;
+    document.getElementById('submitModal').style.display = 'flex';
+}
+function closeSubmitModal() {
+    document.getElementById('submitModal').style.display = 'none';
+}
+function updateFileName(input) {
+    if (input.files && input.files[0]) {
+        document.getElementById('fileName').innerText = input.files[0].name;
+    }
+}
+function viewSubmissions(id) {
+    // Placeholder for viewing submissions logic
+    alert('Submission list for ID: ' + id + ' will be shown in next update.');
+}
+</script>
+{% endblock %}

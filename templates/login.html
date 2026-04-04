@@ -215,6 +215,16 @@
     <input type="text" name="name" placeholder="Full Name" required>
     <input type="email" name="email" placeholder="Email" required>
     <input type="password" name="password" placeholder="Password" required>
+    
+    <select name="role" id="roleSelect" style="width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #9CB9DF; background: white; cursor: pointer;">
+      <option value="Teacher">I am a Teacher</option>
+      <option value="Parent">I am a Parent</option>
+    </select>
+    
+    <div id="rollField" style="display: none;">
+      <input type="text" name="student_roll" placeholder="Your Child's Roll Number (e.g. CS101)">
+    </div>
+
     <button type="submit" class="btn">Signup</button>
     <p class="switch" id="goLogin">Already have account?</p>
   </form>
@@ -243,6 +253,17 @@ signupBtn.onclick = () => {
 
 document.getElementById("goSignup").onclick = () => signupBtn.click();
 document.getElementById("goLogin").onclick = () => loginBtn.click();
+
+document.getElementById("roleSelect").onchange = (e) => {
+    const rollField = document.getElementById("rollField");
+    if (e.target.value === "Parent") {
+        rollField.style.display = "block";
+        rollField.querySelector('input').setAttribute('required', 'required');
+    } else {
+        rollField.style.display = "none";
+        rollField.querySelector('input').removeAttribute('required');
+    }
+};
 </script>
 
 </body>

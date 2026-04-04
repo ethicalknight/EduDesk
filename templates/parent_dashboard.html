@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Parent Dashboard{% endblock %}
+{% block page_title %}Parental Portal{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid">
+    <!-- Student Header -->
+    <div class="glass-card student-profile-header" style="grid-column: span 3; display: flex; align-items: center; gap: 24px; padding: 24px; background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(16, 185, 129, 0.05));">
+        <div class="avatar" style="width: 80px; height: 80px; font-size: 2.5rem; background: var(--primary-color);">{{ student.name[0] | upper }}</div>
+        <div style="flex: 1;">
+            <h2 style="font-size: 1.8rem; margin-bottom: 4px;">{{ student.name }}</h2>
+            <div style="display: flex; gap: 16px; color: var(--text-muted); font-size: 0.9rem;">
+                <span><i class="fa-solid fa-id-card"></i> Roll: {{ student.roll_number }}</span>
+                <span><i class="fa-solid fa-graduation-cap"></i> Sem: {{ student.semester }}</span>
+                <span><i class="fa-solid fa-building"></i> Dept: {{ student.department }}</span>
+            </div>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-size: 2.5rem; font-weight: 800; color: var(--primary-color);">{{ att_rate }}%</div>
+            <div style="font-size: 0.9rem; color: var(--text-muted);">Attendance</div>
+        </div>
+    </div>
+
+    <!-- Attendance Performance -->
+    <div class="glass-card" style="grid-column: span 2;">
+        <h3 style="margin-bottom: 20px;"><i class="fa-solid fa-chart-line" style="color: var(--primary-color); margin-right: 8px;"></i>Attendance Record</h3>
+        <div style="display: flex; gap: 20px; align-items: center; justify-content: space-around; padding: 20px 0;">
+            <div style="text-align: center;">
+                <div style="font-size: 2.5rem; font-weight: 700; color: #10B981;">{{ student.attendances|selectattr('status', 'equalto', 'Present')|list|length }}</div>
+                <div style="font-size: 0.9rem; color: var(--text-muted);">Days Present</div>
+            </div>
+            <div style="height: 60px; width: 1px; background: var(--border-color);"></div>
+            <div style="text-align: center;">
+                <div style="font-size: 2.5rem; font-weight: 700; color: #EF4444;">{{ student.attendances|selectattr('status', 'equalto', 'Absent')|list|length }}</div>
+                <div style="font-size: 0.9rem; color: var(--text-muted);">Days Absent</div>
+            </div>
+        </div>
+        <div style="margin-top: 20px; padding: 12px; background: rgba(var(--primary-rgb), 0.03); border-radius: 12px; font-size: 0.85rem;">
+            <i class="fa-solid fa-lightbulb" style="color: #FACC15;"></i>
+            {% if att_rate >= 75 %}
+                Your child maintains a healthy attendance record. Keep it up!
+            {% else %}
+                Warning: Attendance is below 75%. Please contact the teacher for details.
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Recent Academic Progress -->
+    <div class="glass-card">
+        <h3 style="margin-bottom: 20px;"><i class="fa-solid fa-medal" style="color: #F59E0B; margin-right: 8px;"></i>Latest Grades</h3>
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            {% for g in recent_grades %}
+            <div style="padding: 12px; border-radius: 12px; background: rgba(var(--primary-rgb), 0.03); border: 1px solid var(--border-color);">
+                <div style="font-weight: 600; font-size: 0.9rem;">{{ g.subject.name }}</div>
+                <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">{{ g.assessment }}</span>
+                    {% set perc = (g.score / g.max_score * 100) | int %}
+                    <span style="font-weight: 700; color: {% if perc >= 75 %}#10B981{% else %}#EF4444{% endif %};">{{ g.score }}/{{ g.max_score }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <a href="{{ url_for('reports', student_id=student.id) }}" class="btn btn-secondary" style="width: 100%; margin-top: 16px; text-align: center;">Full Report</a>
+    </div>
+
+    <!-- Child's Schedule -->
+    <div class="glass-card" style="grid-column: span 3;">
+        <h3 style="margin-bottom: 20px;"><i class="fa-solid fa-clock" style="color: var(--primary-color); margin-right: 8px;"></i>Upcoming Classes</h3>
+        <div style="display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px;">
+            {% for t in timetable %}
+            <div class="glass-card" style="min-width: 220px; padding: 20px; border-top: 4px solid var(--primary-color);">
+                <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">{{ t.start_time }} - {{ t.end_time }}</div>
+                <div style="font-weight: 700; margin: 12px 0; font-size: 1.1rem;">{{ t.subject.name }}</div>
+                <div style="font-size: 0.8rem; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-chalkboard-user"></i> {{ t.subject.teacher.name }}</div>
+                <div style="font-size: 0.8rem; display: flex; align-items: center; gap: 8px; margin-top: 4px;"><i class="fa-solid fa-location-dot"></i> {{ t.room }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

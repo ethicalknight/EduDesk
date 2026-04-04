@@ -1,11 +1,16 @@
 :root {
-    --primary-color: #6366f1; /* Indigo 500 */
-    --primary-hover: #4f46e5; /* Indigo 600 */
-    --secondary-color: #64748b; /* Slate 500 */
+    --primary-color: #6366f1;
+    /* Indigo 500 */
+    --primary-hover: #4f46e5;
+    /* Indigo 600 */
+    --secondary-color: #64748b;
+    /* Slate 500 */
 
-    --bg-color: #f8fafc; /* Slate 50 */
+    --bg-color: #f8fafc;
+    /* Slate 50 */
 
-    --sidebar-bg: #1e293b; /* Slate 800 */
+    --sidebar-bg: #1e293b;
+    /* Slate 800 */
     --sidebar-text: #f8fafc;
     --sidebar-hover: #334155;
     --sidebar-active-text: #ffffff;
@@ -13,8 +18,10 @@
     --card-bg: rgba(255, 255, 255, 0.7);
     --card-border: rgba(255, 255, 255, 0.5);
 
-    --text-main: #020617; /* Very Dark Slate (almost black) */
-    --text-muted: #334155; /* Slate 700 (solid dark gray) */
+    --text-main: #020617;
+    /* Very Dark Slate (almost black) */
+    --text-muted: #334155;
+    /* Slate 700 (solid dark gray) */
     --border-color: rgba(15, 23, 42, 0.1);
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -27,8 +34,15 @@
 
 /* Page Entry Animation */
 @keyframes pageFadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .content-wrapper {
@@ -36,11 +50,15 @@
 }
 
 :root.dark-mode {
-    --primary-color: #818cf8; /* Indigo 400 */
-    --primary-hover: #6366f1; /* Indigo 500 */
-    --secondary-color: #94a3b8; /* Slate 400 */
+    --primary-color: #818cf8;
+    /* Indigo 400 */
+    --primary-hover: #6366f1;
+    /* Indigo 500 */
+    --secondary-color: #94a3b8;
+    /* Slate 400 */
 
-    --bg-color: #0f172a; /* Slate 900 */
+    --bg-color: #0f172a;
+    /* Slate 900 */
 
     --sidebar-bg: rgba(30, 41, 59, 0.95);
     --sidebar-text: #f1f5f9;
@@ -582,41 +600,47 @@ table.styled-table tbody tr:hover {
 
 /* Print Styles */
 @media print {
-    .sidebar, .topbar, .no-print, .btn, .flash-messages, .command-palette-overlay {
+
+    .sidebar,
+    .topbar,
+    .no-print,
+    .btn,
+    .flash-messages,
+    .command-palette-overlay {
         display: none !important;
     }
-    
+
     .main-content {
         margin: 0 !important;
         padding: 0 !important;
         width: 100% !important;
     }
-    
+
     .content-wrapper {
         padding: 0 !important;
     }
-    
+
     .card {
         box-shadow: none !important;
         border: none !important;
         background: white !important;
         padding: 0 !important;
     }
-    
+
     .print-only {
         display: block !important;
     }
-    
+
     body {
         background: white !important;
         color: black !important;
     }
-    
+
     table.styled-table {
         box-shadow: none !important;
         border: 1px solid #eee !important;
     }
-    
+
     table.styled-table th {
         background-color: #f1f1f1 !important;
         color: black !important;

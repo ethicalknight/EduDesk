@@ -45,11 +45,42 @@
             <h1 class="page-title" style="margin: 0;">{% block page_title %}Dashboard{% endblock %}</h1>
         </div>
         <div class="user-profile" style="display: flex; align-items: center; gap: 12px;">
+            <!-- Notification Bell -->
+            <div class="notification-wrapper" style="position: relative;">
+                <button id="notifBell" class="btn btn-theme-toggle" aria-label="Notifications"
+                    style="background: transparent; border: none; color: var(--text-main); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; padding: 4px 8px;">
+                    <i class="fa-solid fa-bell"></i>
+                    {% if notifications|length > 0 %}
+                    <span class="pulse-dot" style="position: absolute; top: 4px; right: 4px; width: 10px; height: 10px; background: #ef4444; border-radius: 50%; border: 2px solid var(--card-bg);"></span>
+                    {% endif %}
+                </button>
+                <div id="notifDropdown" class="glass-card notif-dropdown" style="display: none; position: absolute; top: 100%; right: 0; width: 320px; z-index: 1000; margin-top: 12px; padding: 12px; max-height: 400px; overflow-y: auto;">
+                    <div style="font-weight: 700; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>Notifications</span>
+                        <span style="font-size: 0.75rem; color: var(--primary-color); cursor: pointer;">Mark all as read</span>
+                    </div>
+                    {% if notifications %}
+                        {% for n in notifications %}
+                        <div class="notif-item" data-id="{{ n.id }}" style="padding: 10px; border-radius: 8px; margin-bottom: 8px; background: rgba(var(--primary-rgb), 0.05); transition: background 0.2s; cursor: pointer;">
+                            <div style="font-weight: 600; font-size: 0.9rem;">{{ n.title }}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">{{ n.message }}</div>
+                            <div style="font-size: 10px; color: var(--text-muted); text-align: right; margin-top: 4px;">{{ n.created_at.strftime('%H:%M') }}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">No new notifications</div>
+                    {% endif %}
+                </div>
+            </div>
+
             <button id="themeToggle" class="btn btn-theme-toggle" aria-label="Toggle Theme"
                 style="background: transparent; border: none; color: var(--text-main); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; padding: 4px 8px;">
                 <i class="fa-solid fa-moon"></i>
             </button>
-            <span>{{ current_user.name }} ({{ current_user.role }})</span>
+            <div style="text-align: right;">
+                <div style="font-size: 0.85rem; font-weight: 600;">{{ current_user.name }}</div>
+                <div style="font-size: 0.7rem; color: var(--text-muted);">{{ current_user.role }}</div>
+            </div>
             <div class="avatar">{{ current_user.name[0] | upper if current_user.name else 'U' }}</div>
             <a href="{{ url_for('logout') }}" title="Logout"
                 style="color: #ef4444; font-size: 1.2rem; margin-left: 8px;"><i
@@ -63,12 +94,13 @@
             <ul class="nav-links" style="padding-top: 16px;">
                 <li class="nav-item">
                     <a href="{{ url_for('dashboard') }}"
-                        class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                        class="nav-link {% if request.endpoint == 'dashboard' or request.endpoint == 'student_dashboard' or request.endpoint == 'parent_dashboard' %}active{% endif %}">
                         <i class="fa-solid fa-chart-pie"></i>
                         <span>Dashboard</span>
                     </a>
                 </li>
 
+                {% if current_user.role in ['Admin', 'Teacher'] %}
                 <li class="nav-item">
                     <a href="{{ url_for('attendance') }}"
                         class="nav-link {% if request.endpoint == 'attendance' %}active{% endif %}">
@@ -90,6 +122,7 @@
                         <span>Students</span>
                     </a>
                 </li>
+                {% endif %}
 
                 <li class="nav-item">
                     <a href="{{ url_for('timetable') }}"
@@ -98,6 +131,15 @@
                         <span>Timetable</span>
                     </a>
                 </li>
+
+                <li class="nav-item">
+                    <a href="{{ url_for('assignments') }}"
+                        class="nav-link {% if request.endpoint == 'assignments' %}active{% endif %}">
+                        <i class="fa-solid fa-file-arrow-up"></i>
+                        <span>Assignments</span>
+                    </a>
+                </li>
+
                 {% if current_user.role == 'Admin' %}
                 <li class="nav-item">
                     <a href="{{ url_for('teachers') }}"
@@ -107,6 +149,8 @@
                     </a>
                 </li>
                 {% endif %}
+
+                {% if current_user.role in ['Admin', 'Teacher'] %}
                 <li class="nav-item">
                     <a href="{{ url_for('analytics') }}"
                         class="nav-link {% if request.endpoint == 'analytics' %}active{% endif %}">
@@ -114,6 +158,8 @@
                         <span>Analytics</span>
                     </a>
                 </li>
+                {% endif %}
+
                 <li class="nav-item">
                     <a href="{{ url_for('reports') }}"
                         class="nav-link {% if request.endpoint == 'reports' %}active{% endif %}">
@@ -232,6 +278,34 @@
                 icon.classList.add('fa-sun');
             }
         });
+
+        // Notification logic
+        const notifBell = document.getElementById('notifBell');
+        const notifDropdown = document.getElementById('notifDropdown');
+        if (notifBell && notifDropdown) {
+            notifBell.addEventListener('click', (e) => {
+                e.stopPropagation();
+                notifDropdown.style.display = notifDropdown.style.display === 'none' ? 'block' : 'none';
+            });
+            document.addEventListener('click', (e) => {
+                if (!notifDropdown.contains(e.target) && e.target !== notifBell) {
+                    notifDropdown.style.display = 'none';
+                }
+            });
+            
+            document.querySelectorAll('.notif-item').forEach(item => {
+                item.addEventListener('click', async () => {
+                    const id = item.dataset.id;
+                    try {
+                        const res = await fetch(`/api/notifications/read/${id}`, { method: 'POST' });
+                        if (res.ok) {
+                            item.style.opacity = '0.5';
+                            item.style.background = 'transparent';
+                        }
+                    } catch (e) { console.error("Notif error", e); }
+                });
+            });
+        }
 
         // Sidebar Toggle
         const sidebarToggle = document.getElementById('sidebarToggle');
