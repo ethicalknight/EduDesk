@@ -1,0 +1,22 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.venv/
+venv/
+ENV/
+
+# Database
+instance/
+# If you want to track the folder but not the DB:
+# instance/*
+# !instance/.gitignore
+edudesk.db
+
+# VS Code
+.vscode/
+
+# Artifacts
+.gemini/

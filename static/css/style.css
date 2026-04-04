@@ -1,21 +1,21 @@
 :root {
-    --primary-color: #6366f1;
+    --primary-color: #2a6f97;
     /* Indigo 500 */
-    --primary-hover: #4f46e5;
+    --primary-hover: #2a6f97;
     /* Indigo 600 */
     --secondary-color: #64748b;
     /* Slate 500 */
 
-    --bg-color: #f8fafc;
+    --bg-color: #d6e2e9;
     /* Slate 50 */
 
-    --sidebar-bg: #1e293b;
+    --sidebar-bg: #2a6f97;
     /* Slate 800 */
     --sidebar-text: #f8fafc;
     --sidebar-hover: #334155;
     --sidebar-active-text: #ffffff;
 
-    --card-bg: rgba(255, 255, 255, 0.7);
+    --card-bg: /* rgba(255, 255, 255, 0.7); */ #bcd4e6;
     --card-border: rgba(255, 255, 255, 0.5);
 
     --text-main: #020617;
@@ -315,7 +315,7 @@ div.form-group label {
     display: block;
     margin-bottom: 8px;
     font-weight: 600;
-    color: var(--text-main);
+    color: var(--text-main); /* hftfjdrgghmfghjhgfdfghgfdsdfgh*/
     font-size: 0.95rem;
 }
 
@@ -531,6 +531,11 @@ table.styled-table tbody tr:hover {
     background-color: #D68C8C;
     color: #030303;
     border: 1px solid #B46C6C;
+}
+
+
+.btn-primary {
+    background-color: #2a6f97;
 }
 
 /* Mobile Responsiveness */
