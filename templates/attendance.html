@@ -19,6 +19,10 @@
             <div class="form-group">
                 <label for="date">Class Date</label>
                 <input type="date" name="date" id="date" class="form-control" value="{{ today }}" required>
+                <div id="statusBadge" style="margin-top: 8px; font-size: 0.8rem; font-weight: 700; display: none; align-items: center; gap: 6px;">
+                    <span id="badgeText" style="padding: 2px 8px; border-radius: 4px;"></span>
+                    <span id="recordCount" style="color: var(--text-muted);"></span>
+                </div>
             </div>
         </div>
 
@@ -38,11 +42,11 @@
                     <td>
                         <div style="display: flex; gap: 16px; align-items: center;">
                             <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                                <input type="radio" name="status_{{ student.id }}" value="Present" checked style="accent-color: #10B981; width: 18px; height: 18px;">
+                                <input type="radio" name="status_{{ student.id }}" id="status_{{ student.id }}_Present" value="Present" checked style="accent-color: #10B981; width: 18px; height: 18px;">
                                 <span style="font-weight: 500; color: #10B981;">Present</span>
                             </label>
                             <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                                <input type="radio" name="status_{{ student.id }}" value="Absent" style="accent-color: #ef4444; width: 18px; height: 18px;">
+                                <input type="radio" name="status_{{ student.id }}" id="status_{{ student.id }}_Absent" value="Absent" style="accent-color: #ef4444; width: 18px; height: 18px;">
                                 <span style="font-weight: 500; color: #ef4444;">Absent</span>
                             </label>
                         </div>
@@ -61,7 +65,7 @@
                     <i class="fa-solid fa-file-csv"></i> Export CSV
                 </a>
             </div>
-            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check" style="margin-right: 8px;"></i> Submit Attendance</button>
+            <button type="submit" id="submitBtn" class="btn btn-primary"><i class="fa-solid fa-check" style="margin-right: 8px;"></i> Submit Attendance</button>
         </div>
 
         <div id="qrContainer" style="display: none; margin-top: 32px; padding: 24px; border-radius: 12px; background-color: var(--bg-color); border: 1px solid var(--border-color); text-align: center;">
@@ -179,5 +183,61 @@
             startQRFlow();
         }
     });
+
+    // Attendance Editing Logic: Fetch existing records
+    async function fetchExistingAttendance() {
+        const subjectId = subjectSelect.value;
+        const date = document.getElementById('date').value;
+        const statusBadge = document.getElementById('statusBadge');
+        const badgeText = document.getElementById('badgeText');
+        const recordCount = document.getElementById('recordCount');
+        const submitBtn = document.getElementById('submitBtn');
+
+        if (!subjectId || !date) {
+            statusBadge.style.display = 'none';
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/attendance/check?subject_id=${subjectId}&date=${date}`);
+            const data = await response.json();
+            
+            // Reset to default "Present" for all
+            document.querySelectorAll('input[type="radio"][value="Present"]').forEach(r => r.checked = true);
+            
+            if (data.records && Object.keys(data.records).length > 0) {
+                const count = Object.keys(data.records).length;
+                for (const studentId in data.records) {
+                    const status = data.records[studentId];
+                    const radio = document.getElementById(`status_${studentId}_${status}`);
+                    if (radio) radio.checked = true;
+                }
+                
+                // Update UI for Edit Mode
+                statusBadge.style.display = 'flex';
+                badgeText.textContent = "EXISTING RECORDS LOADED";
+                badgeText.style.backgroundColor = "rgba(16, 185, 129, 0.1)";
+                badgeText.style.color = "#10B981";
+                recordCount.textContent = `(${count} students found)`;
+                submitBtn.innerHTML = '<i class="fa-solid fa-pen-to-square" style="margin-right: 8px;"></i> Update Attendance';
+            } else {
+                // Update UI for New Mode
+                statusBadge.style.display = 'flex';
+                badgeText.textContent = "NEW RECORD";
+                badgeText.style.backgroundColor = "rgba(var(--primary-rgb), 0.1)";
+                badgeText.style.color = "var(--primary-color)";
+                recordCount.textContent = "(Starting fresh)";
+                submitBtn.innerHTML = '<i class="fa-solid fa-check" style="margin-right: 8px;"></i> Submit Attendance';
+            }
+        } catch (e) {
+            console.error("Error fetching existing attendance:", e);
+        }
+    }
+
+    subjectSelect.addEventListener('change', fetchExistingAttendance);
+    document.getElementById('date').addEventListener('change', fetchExistingAttendance);
+    
+    // Initial fetch if values are pre-selected
+    if (subjectSelect.value) fetchExistingAttendance();
 </script>
 {% endblock %}

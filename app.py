@@ -6,6 +6,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, Student, Subject, Attendance, Grade, Timetable, Announcement, Notification, Assignment, Submission
 from datetime import datetime
+from sqlalchemy import extract
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
 
 app = Flask(__name__)
@@ -325,11 +326,14 @@ def parent_dashboard():
 @app.route('/attendance', methods=['GET', 'POST'])
 @login_required
 def attendance():
-    subjects = Subject.query.all()
     if current_user.role == 'Admin':
+        subjects = Subject.query.all()
         students = Student.query.all()
     else:
-        students = Student.query.filter_by(teacher_id=current_user.id).all()
+        # Teachers only see subjects they are assigned to
+        subjects = Subject.query.filter_by(teacher_id=current_user.id).all()
+        # Teachers should see all students, not just their mentees
+        students = Student.query.all()
     
     if request.method == 'POST':
         subject_id = request.form.get('subject_id')
@@ -627,6 +631,9 @@ def trigger_absent_hook():
 @login_required
 def reports():
     student_id = request.args.get('student_id', type=int)
+    month = request.args.get('month', type=int)
+    year = request.args.get('year', type=int)
+    
     selected_student = None
     student_grades = []
     present_days = 0
@@ -655,23 +662,64 @@ def reports():
     leaderboard_att = sorted(leaderboard_att, key=lambda x: x['rate'], reverse=True)[:10]
     leaderboard_perf = sorted(leaderboard_perf, key=lambda x: x['score'], reverse=True)[:10]
 
-    if student_id:
-        selected_student = Student.query.get(student_id)
-        if selected_student:
-             student_grades = Grade.query.filter_by(student_id=student_id).all()
-             present_days = Attendance.query.filter_by(student_id=student_id, status='Present').count()
-             absent_days = Attendance.query.filter_by(student_id=student_id, status='Absent').count()
-             
-             # Success prob & badges (mock logic for presentation)
-             selected_student.badges = []
-             if present_days > 10: selected_student.badges.append({'name': 'Perfect Attendance', 'icon': 'fa-calendar-check', 'color': '#10B981'})
-             
-             total = present_days + absent_days
-             att_rate_val = (present_days / total * 100) if total > 0 else 0
-             avg_grade = sum([(g.score/g.max_score)*100 for g in student_grades]) / len(student_grades) if student_grades else 0
-             selected_student.success_probability = int((att_rate_val * 0.4) + (avg_grade * 0.6))
+    # Role-based student selection filtering
+    if current_user.role == 'Admin':
+        students = Student.query.all()
+    elif current_user.role == 'Teacher':
+        students = Student.query.filter_by(teacher_id=current_user.id).all()
+    elif current_user.role == 'Student':
+        students = Student.query.filter_by(user_id=current_user.id).all()
+        if not student_id and students:
+            student_id = students[0].id
+    elif current_user.role == 'Parent':
+        students = Student.query.filter_by(parent_id=current_user.id).all()
+        if not student_id and students:
+            student_id = students[0].id
+    else:
+        students = []
 
-    students = Student.query.all()
+    if student_id:
+        # Final security check: ensure the user has permission to see THIS student
+        has_permission = False
+        if current_user.role == 'Admin':
+            has_permission = True
+        elif current_user.role == 'Teacher':
+            check_st = Student.query.get(student_id)
+            if check_st and check_st.teacher_id == current_user.id:
+                has_permission = True
+        elif current_user.role == 'Student':
+            check_st = Student.query.get(student_id)
+            if check_st and check_st.user_id == current_user.id:
+                has_permission = True
+        elif current_user.role == 'Parent':
+            check_st = Student.query.get(student_id)
+            if check_st and check_st.parent_id == current_user.id:
+                has_permission = True
+
+        if has_permission:
+            selected_student = Student.query.get(student_id)
+            if selected_student:
+                student_grades = Grade.query.filter_by(student_id=student_id).all()
+                
+                # Fetch attendance with filtering
+                att_query = Attendance.query.filter_by(student_id=student_id)
+                if month:
+                    att_query = att_query.filter(extract('month', Attendance.date) == month)
+                if year:
+                    att_query = att_query.filter(extract('year', Attendance.date) == year)
+                
+                present_days = att_query.filter_by(status='Present').count()
+                absent_days = att_query.filter_by(status='Absent').count()
+                
+                # Success prob & badges (mock logic for presentation)
+                selected_student.badges = []
+                if present_days > 10: selected_student.badges.append({'name': 'Perfect Attendance', 'icon': 'fa-calendar-check', 'color': '#10B981'})
+                
+                total = present_days + absent_days
+                att_rate_val = (present_days / total * 100) if total > 0 else 0
+                avg_grade = sum([(g.score/g.max_score)*100 for g in student_grades]) / len(student_grades) if student_grades else 0
+                selected_student.success_probability = int((att_rate_val * 0.4) + (avg_grade * 0.6))
+    
     return render_template('reports.html', 
                           students=students, 
                           selected_student=selected_student,
@@ -680,6 +728,8 @@ def reports():
                           absent_days=absent_days,
                           leaderboard_att=leaderboard_att,
                           leaderboard_perf=leaderboard_perf,
+                          selected_month=month,
+                          selected_year=year,
                           today=datetime.now())
 
 @app.route('/analytics')
@@ -702,6 +752,24 @@ def analytics():
                            trend_data=trend_data,
                            total_present=total_present,
                            total_absent=total_absent)
+
+@app.route('/api/attendance/check')
+@login_required
+def api_attendance_check():
+    subject_id = request.args.get('subject_id', type=int)
+    date_str = request.args.get('date')
+    if not subject_id or not date_str:
+        return jsonify({'error': 'Missing parameters'}), 400
+    
+    try:
+        date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format'}), 400
+    
+    records = Attendance.query.filter_by(subject_id=subject_id, date=date_obj).all()
+    return jsonify({
+        'records': {r.student_id: r.status for r in records}
+    })
 
 @app.route('/api/recent_checkins/<int:subject_id>')
 @login_required
@@ -804,21 +872,32 @@ def export_grades():
 @app.route('/assignments', methods=['GET', 'POST'])
 @login_required
 def assignments():
+    now = datetime.utcnow()
     if current_user.role == 'Student':
         student = current_user.student_profile[0] if current_user.student_profile else None
-        # Student sees assignments for all their subjects
+        # Student sees assignments for all subjects
         all_assignments = Assignment.query.order_by(Assignment.deadline.asc()).all()
-        return render_template('assignments.html', assignments=all_assignments)
+        return render_template('assignments.html', assignments=all_assignments, now=now)
+    
+    if current_user.role == 'Parent':
+        children = current_user.children
+        # Parent sees assignments for all their children's subjects
+        # For simplicity, we show all assignments, or we could filter by student's subjects
+        all_assignments = Assignment.query.order_by(Assignment.deadline.asc()).all()
+        return render_template('assignments.html', assignments=all_assignments, now=now)
     
     # Teachers and Admins
     if current_user.role == 'Admin':
-        subjects = Subject.query.all()
+        subjects = [] # Admins don't post, so no subjects needed for the form
         all_assignments = Assignment.query.order_by(Assignment.deadline.asc()).all()
     else:
         subjects = Subject.query.filter_by(teacher_id=current_user.id).all()
         all_assignments = Assignment.query.filter_by(teacher_id=current_user.id).order_by(Assignment.deadline.asc()).all()
         
     if request.method == 'POST':
+        if current_user.role != 'Teacher':
+            flash('Access Denied: Only Teachers can post assignments.', 'error')
+            return redirect(url_for('assignments'))
         subject_id = request.form.get('subject_id')
         title = request.form.get('title')
         description = request.form.get('description')
@@ -846,7 +925,7 @@ def assignments():
         flash('Assignment posted successfully!', 'success')
         return redirect(url_for('assignments'))
         
-    return render_template('assignments.html', subjects=subjects, assignments=all_assignments)
+    return render_template('assignments.html', subjects=subjects, assignments=all_assignments, now=now)
 
 @app.route('/submit_assignment/<int:assignment_id>', methods=['POST'])
 @login_required

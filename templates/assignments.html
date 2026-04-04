@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="dashboard-grid">
-    {% if current_user.role in ['Admin', 'Teacher'] %}
+    {% if current_user.role == 'Teacher' %}
     <!-- Post Assignment Card -->
     <div class="glass-card" style="grid-column: span 1;">
         <h3 style="margin-bottom: 24px;"><i class="fa-solid fa-plus-circle" style="color: var(--primary-color); margin-right: 8px;"></i>Post New Assignment</h3>
@@ -73,7 +73,7 @@
     </div>
     {% endif %}
 
-    {% if current_user.role == 'Student' %}
+    {% if current_user.role in ['Student', 'Parent'] %}
     <!-- Student Assignment View -->
     <div class="glass-card" style="grid-column: span 3;">
         <h3 style="margin-bottom: 24px;"><i class="fa-solid fa-tasks" style="color: var(--primary-color); margin-right: 8px;"></i>Pending Tasks</h3>
